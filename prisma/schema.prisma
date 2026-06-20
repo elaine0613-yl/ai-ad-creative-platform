@@ -1,0 +1,64 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String
+  name         String
+  plan         String     @default("free")
+  credits      Int        @default(100)
+  totalCredits Int        @default(100)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  materials    Material[]
+  tasks        Task[]
+}
+
+model Material {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name             String
+  type             String
+  url              String
+  thumbnailUrl     String?
+  width            Int      @default(800)
+  height           Int      @default(800)
+  tags             String   @default("[]")
+  version          Int      @default(1)
+  complianceStatus String?
+  metadata         String   @default("{}")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Task {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  type         String
+  mode         String
+  status       String    @default("queued")
+  progress     Int       @default(0)
+  totalCount   Int       @default(1)
+  successCount Int       @default(0)
+  failCount    Int       @default(0)
+  payload      String    @default("{}")
+  result       String    @default("{}")
+  errorMessage String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  completedAt  DateTime?
+
+  @@index([userId, status])
+}
