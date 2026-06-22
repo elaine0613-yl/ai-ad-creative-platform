@@ -2,10 +2,15 @@ import { mkdir, writeFile, readFile } from "fs/promises";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 
-const STORAGE_DIR = process.env.STORAGE_DIR ?? "./storage";
+function getDefaultStorageDir() {
+  if (process.env.STORAGE_DIR) return process.env.STORAGE_DIR;
+  if (process.env.VERCEL) return "/tmp/storage";
+  return "./storage";
+}
 
 export function getStorageDir() {
-  return path.resolve(process.cwd(), STORAGE_DIR);
+  const dir = getDefaultStorageDir();
+  return path.isAbsolute(dir) ? dir : path.resolve(process.cwd(), dir);
 }
 
 export async function ensureStorageSubdir(subdir: string) {

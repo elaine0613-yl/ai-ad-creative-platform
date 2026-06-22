@@ -5,7 +5,7 @@
 ## 技术栈
 
 - **前端**: Next.js 15 · React 19 · Tailwind CSS · Fabric.js
-- **后端**: Next.js API Routes · Prisma · SQLite
+- **后端**: Next.js API Routes · Prisma · PostgreSQL（Neon）
 - **AI**: OpenAI DALL-E 3（文生图）· Replicate（图文转视频）· Mock 降级
 
 ## 快速开始
@@ -24,7 +24,7 @@ npm run dev
 
 | 变量 | 说明 |
 |------|------|
-| `DATABASE_URL` | SQLite 路径，默认 `file:./dev.db` |
+| `DATABASE_URL` | PostgreSQL 连接（推荐 [Neon](https://neon.tech) 免费版） |
 | `JWT_SECRET` | JWT 签名密钥 |
 | `OPENAI_API_KEY` | OpenAI Key，启用真实文生图 |
 | `REPLICATE_API_TOKEN` | Replicate Token，启用真实图文转视频 |
@@ -45,7 +45,7 @@ npm run dev
 
 ### 3. 后端服务
 - 用户认证（注册/登录/演示账号/JWT Cookie）
-- Prisma + SQLite 数据持久化
+- Prisma + PostgreSQL 数据持久化
 - 异步任务队列（内存调度 + DB 状态追踪）
 - 本地文件存储 + `/api/files/*` 静态访问
 
@@ -72,3 +72,23 @@ npm run dev
 - 密码: `demo123456`
 
 或通过 `POST /api/auth/demo` 一键登录。
+
+## 部署到 Vercel（在线 Demo）
+
+详细图文步骤见 [docs/vercel-deploy-guide.html](./docs/vercel-deploy-guide.html)。
+
+简要流程：
+
+1. 打开 [vercel.com](https://vercel.com) 用 GitHub 登录
+2. **Import** 本仓库 `ai-ad-creative-platform`
+3. 添加 **Neon** 数据库（自动配置 `DATABASE_URL`）
+4. 设置环境变量：`JWT_SECRET`（随机字符串）、`STORAGE_DIR=/tmp/storage`
+5. 点击 **Deploy**，完成后访问 `https://你的域名.vercel.app/image/create`
+
+**发给老师的 demo 链接示例：**
+
+```
+https://你的项目.vercel.app/image/create
+```
+
+演示账号：`demo@ad-creative.local` / `demo123456`
