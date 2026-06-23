@@ -3,6 +3,7 @@ import type {
   CreativeIdea,
   DashboardStats,
   GenerationTask,
+  KnowledgeAsset,
   Material,
   TeamMember,
   Template,
@@ -122,16 +123,47 @@ export const mockMaterials: Material[] = [
   },
 ];
 
+export const mockKnowledgeAssets: KnowledgeAsset[] = [
+  // 图片知识库
+  { id: "ik-1", library: "image", categoryId: "composition", name: "三分法主图构图", description: "产品占画面 1/3，文案区占 2/3，适合电商主图", tags: ["三分法", "主图"], previewColor: "#E0E7FF", usageHint: "图片创作 → 文生图" },
+  { id: "ik-2", library: "image", categoryId: "composition", name: "居中 hero 构图", description: "产品居中放大，四周留白，突出单品质感", tags: ["居中", "留白"], previewColor: "#F3F4F6" },
+  { id: "ik-3", library: "image", categoryId: "visual-style", name: "国潮促销风", description: "红金配色 + 传统纹样，适合大促节点", tags: ["国潮", "大促"], previewColor: "#FEE2E2" },
+  { id: "ik-4", library: "image", categoryId: "visual-style", name: "简约高级风", description: "大留白 + 低饱和，适合美妆、轻奢", tags: ["简约", "高级"], previewColor: "#F9FAFB" },
+  { id: "ik-5", library: "image", categoryId: "color-scheme", name: "618 促销色板", description: "主色 #FF0036，辅色 #FFD700，高对比促点击", tags: ["促销红", "618"], previewColor: "#FF0036" },
+  { id: "ik-6", library: "image", categoryId: "scene-background", name: "厨房生活场景", description: "暖光家居环境，适合食品、小家电", tags: ["生活场景", "暖光"], previewColor: "#FEF3C7" },
+  { id: "ik-7", library: "image", categoryId: "lighting-mood", name: "柔光棚拍", description: "均匀柔光，减少阴影，适合产品质感展示", tags: ["柔光", "棚拍"], previewColor: "#E5E7EB" },
+  { id: "ik-8", library: "image", categoryId: "copy-layout", name: "价格+卖点双层排版", description: "顶部主标题，中部卖点 bullet，底部价格+CTA", tags: ["价格标签", "CTA"], previewColor: "#DBEAFE" },
+  { id: "ik-9", library: "image", categoryId: "product-display", name: "功效可视化", description: "用图标/箭头标注成分与功效，适合护肤、保健", tags: ["功效", "拆解"], previewColor: "#D1FAE5" },
+  { id: "ik-10", library: "image", categoryId: "platform-spec", name: "小红书封面 3:4", description: "1080×1440，顶部 15% 留安全区放标题", tags: ["小红书", "安全区"], previewColor: "#FCE7F3" },
+  { id: "ik-11", library: "image", categoryId: "brand-assets", name: "阳光美妆品牌规范", description: "主色 #FF6B9D，Logo 右上 12%，PingFang SC", tags: ["品牌色", "Logo"], previewColor: "#FF6B9D" },
+  { id: "ik-12", library: "image", categoryId: "industry-template", name: "618 大促主图模板", description: "电商百货 · 800×800 · 促销红色调", tags: ["618", "电商"], previewColor: "#FCA5A5" },
+  // 视频知识库
+  { id: "vk-1", library: "video", categoryId: "bgm", name: "快节奏电子 BGM", description: "120 BPM，适合 15s 带货短视频卡点", tags: ["电子", "卡点"], previewColor: "#6366F1" },
+  { id: "vk-2", library: "video", categoryId: "bgm", name: "轻音乐氛围 BGM", description: "舒缓背景，适合品牌故事、产品展示", tags: ["轻音乐", "品牌"], previewColor: "#A5B4FC" },
+  { id: "vk-3", library: "video", categoryId: "voiceover", name: "磁性男声·专业解说", description: "中速沉稳，适合 3C、金融类广告", tags: ["男声", "解说"], previewColor: "#1E3A5F" },
+  { id: "vk-4", library: "video", categoryId: "voiceover", name: "活力女声·带货口播", description: "语速偏快，情绪饱满，适合快消品", tags: ["女声", "带货"], previewColor: "#EC4899" },
+  { id: "vk-5", library: "video", categoryId: "sfx", name: "金币到账音效", description: "强调优惠力度，配合价格字幕弹出", tags: ["Pop", "促销"], previewColor: "#FBBF24" },
+  { id: "vk-6", library: "video", categoryId: "subtitles", name: "关键词高亮字幕", description: "卖点词放大变色，其余字保持白底黑字", tags: ["花字", "高亮"], previewColor: "#F97316" },
+  { id: "vk-7", library: "video", categoryId: "transitions", name: "缩放转场", description: "镜头推近切换，适合产品特写衔接", tags: ["缩放", "硬切"], previewColor: "#8B5CF6" },
+  { id: "vk-8", library: "video", categoryId: "storyboard", name: "标准 15s 带货分镜", description: "钩子(3s) → 卖点(8s) → 价格(2s) → CTA(2s)", tags: ["分镜", "15s"], previewColor: "#0EA5E9" },
+  { id: "vk-9", library: "video", categoryId: "pacing", name: "3 秒一个信息点", description: "每 3 秒切换画面或字幕，保持信息流密度", tags: ["节奏", "信息密度"], previewColor: "#14B8A6" },
+  { id: "vk-10", library: "video", categoryId: "hook-opening", name: "痛点提问开场", description: "「还在用 XX 吗？」类反问，3 秒内抓住注意", tags: ["钩子", "痛点"], previewColor: "#EF4444" },
+  { id: "vk-11", library: "video", categoryId: "cta-ending", name: "限时优惠片尾", description: "倒计时 + 扫码领券 + 立即下单按钮", tags: ["CTA", "领券"], previewColor: "#DC2626" },
+  { id: "vk-12", library: "video", categoryId: "motion-graphics", name: "促销角标动效", description: "「限时」「爆款」角标弹入，配合音效", tags: ["贴纸", "角标"], previewColor: "#F59E0B" },
+  { id: "vk-13", library: "video", categoryId: "digital-human", name: "商务女性数字人", description: "正装形象，适合 B2B、知识讲解类广告", tags: ["数字人", "商务"], previewColor: "#64748B" },
+  { id: "vk-14", library: "video", categoryId: "video-template", name: "快节奏带货模板", description: "9:16 · 15s · 图文转视频 · 卡点 BGM", tags: ["带货", "竖版"], previewColor: "#7C3AED" },
+];
+
 export const mockTasks: GenerationTask[] = [
   {
     id: "task-1",
-    name: "批量主图生成 - 防晒系列",
+    name: "防晒主图生成",
     type: "image",
     mode: "文生图",
     status: "processing",
     progress: 65,
-    totalCount: 20,
-    successCount: 13,
+    totalCount: 4,
+    successCount: 3,
     failCount: 0,
     createdAt: "2026-06-20 14:30",
   },

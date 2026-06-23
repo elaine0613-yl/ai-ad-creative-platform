@@ -164,6 +164,27 @@ export interface NavItem {
   badge?: string;
 }
 
+export type KnowledgeLibraryType = "image" | "video";
+
+export interface KnowledgeCategory {
+  id: string;
+  library: KnowledgeLibraryType;
+  label: string;
+  description: string;
+  terms: string[];
+}
+
+export interface KnowledgeAsset {
+  id: string;
+  library: KnowledgeLibraryType;
+  categoryId: string;
+  name: string;
+  description: string;
+  tags: string[];
+  previewColor?: string;
+  usageHint?: string;
+}
+
 export interface DashboardStats {
   todayGenerated: number;
   weekGenerated: number;

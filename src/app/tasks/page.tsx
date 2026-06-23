@@ -52,7 +52,7 @@ export default function TasksPage() {
 
   return (
     <>
-      <PageHeader title="任务中心" description="批量生成任务队列管理与进度追踪" />
+      <PageHeader title="任务中心" description="追踪图片与视频生成任务进度与结果" />
 
       <div className="flex-1 overflow-y-auto p-6">
         <div className="mx-auto max-w-5xl">
@@ -95,7 +95,7 @@ export default function TasksPage() {
                           <StatusBadge status={task.status} />
                         </div>
                         <p className="mt-1 text-xs text-gray-500">
-                          {task.mode} · {task.type === "image" ? "图片" : task.type === "video" ? "视频" : "批量"} ·{" "}
+                          {task.mode} · {task.type === "image" ? "图片" : "视频"} ·{" "}
                           {new Date(task.createdAt).toLocaleString("zh-CN")}
                         </p>
 

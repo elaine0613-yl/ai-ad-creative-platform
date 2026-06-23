@@ -37,8 +37,8 @@ export default function MaterialsPage() {
   return (
     <>
       <PageHeader
-        title="我的素材"
-        description="分类管理、标签筛选、版本回溯"
+        title="素材库"
+        description="管理 AI 生成的图片与视频成品，支持分类、标签与版本回溯"
         actions={
           selected.length > 0 && (
             <div className="flex gap-2">

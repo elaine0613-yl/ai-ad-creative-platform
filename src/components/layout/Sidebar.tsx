@@ -3,15 +3,11 @@
 import { NAV_ITEMS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import {
+  BookOpen,
   FolderOpen,
-  Image,
-  LayoutDashboard,
-  LayoutTemplate,
+  Image as ImageIcon,
   ListTodo,
-  Palette,
   Sparkles,
-  Upload,
-  Users,
   Video,
   type LucideIcon,
 } from "lucide-react";
@@ -19,15 +15,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const iconMap: Record<string, LucideIcon> = {
-  LayoutDashboard,
-  Image,
+  Image: ImageIcon,
   Video,
-  LayoutTemplate,
-  Palette,
+  BookOpen,
   FolderOpen,
   ListTodo,
-  Upload,
-  Users,
 };
 
 export function Sidebar() {
@@ -47,7 +39,7 @@ export function Sidebar() {
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
         {NAV_ITEMS.map((item) => {
-          const Icon = iconMap[item.icon] ?? LayoutDashboard;
+          const Icon = iconMap[item.icon] ?? ImageIcon;
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
 
           return (
