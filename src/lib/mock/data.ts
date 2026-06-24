@@ -125,7 +125,7 @@ export const mockMaterials: Material[] = [
 
 export const mockKnowledgeAssets: KnowledgeAsset[] = [
   // 图片知识库
-  { id: "ik-1", library: "image", categoryId: "composition", name: "三分法主图构图", description: "产品占画面 1/3，文案区占 2/3，适合电商主图", tags: ["三分法", "主图"], previewColor: "#E0E7FF", usageHint: "图片创作 → 文生图" },
+  { id: "ik-1", library: "image", categoryId: "composition", name: "三分法主图构图", description: "产品占画面 1/3，文案区占 2/3，适合电商主图", tags: ["三分法", "主图"], previewColor: "#E0E7FF", usageHint: "图片创作工作台" },
   { id: "ik-2", library: "image", categoryId: "composition", name: "居中 hero 构图", description: "产品居中放大，四周留白，突出单品质感", tags: ["居中", "留白"], previewColor: "#F3F4F6" },
   { id: "ik-3", library: "image", categoryId: "visual-style", name: "国潮促销风", description: "红金配色 + 传统纹样，适合大促节点", tags: ["国潮", "大促"], previewColor: "#FEE2E2" },
   { id: "ik-4", library: "image", categoryId: "visual-style", name: "简约高级风", description: "大留白 + 低饱和，适合美妆、轻奢", tags: ["简约", "高级"], previewColor: "#F9FAFB" },
