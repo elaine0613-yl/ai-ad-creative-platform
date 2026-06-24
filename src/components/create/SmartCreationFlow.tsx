@@ -1,22 +1,22 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
+import { CampaignConfirmPanel } from "@/components/create/CampaignConfirmPanel";
 import { api } from "@/lib/api/client";
+import { buildMockCampaignPreview } from "@/lib/campaign/mock-preview";
 import type { CampaignSnapshot } from "@/lib/campaign/types";
 import type { MaterialType } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
   Bot,
-  CheckCircle2,
   Download,
   Loader2,
   Send,
   Shield,
-  Sparkles,
   User,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface SmartCreationFlowProps {
   materialType: MaterialType;
@@ -25,14 +25,6 @@ interface SmartCreationFlowProps {
   placeholder: string;
   examplePrompt: string;
 }
-
-const CREATION_WORKFLOW_STEPS = [
-  "描述需求与投放平台，Agent 自动拆解",
-  "确认推荐选品与创意预设",
-  "大模型自动生成图片或视频",
-  "按平台规范自动审核",
-  "审核通过自动入库，即可投放",
-];
 
 export function SmartCreationFlow({
   materialType,
@@ -47,6 +39,11 @@ export function SmartCreationFlow({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const previewCampaign = useMemo(
+    () => buildMockCampaignPreview(materialType),
+    [materialType]
+  );
 
   const selectedSkuId =
     campaign?.selectedSkuId ?? campaign?.recommendations[0]?.sku.id ?? null;
@@ -124,6 +121,14 @@ export function SmartCreationFlow({
     } finally {
       setLoading(false);
     }
+  };
+
+  const updateField = async (fieldKey: string, value: string) => {
+    if (!campaign) return;
+    const { campaign: c } = await api.campaigns.action(campaign.id, "update_fields", {
+      fields: { [fieldKey]: value },
+    });
+    setCampaign(c);
   };
 
   const confirmAndGenerate = async () => {
@@ -228,123 +233,28 @@ export function SmartCreationFlow({
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#f4f4f5]">
           <div className="flex flex-1 flex-col overflow-y-auto p-6">
             {!campaign && (
-              <div className="mx-auto flex w-full max-w-md flex-col gap-4">
-                <div className="rounded-2xl bg-white p-5 text-left shadow-sm">
-                  <p className="text-xs font-medium uppercase tracking-wide text-gray-400">功能说明</p>
-                  <ol className="mt-3 space-y-2.5">
-                    {CREATION_WORKFLOW_STEPS.map((step, index) => (
-                      <li key={step} className="flex gap-3 text-sm leading-snug text-gray-700">
-                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700">
-                          {index + 1}
-                        </span>
-                        <span className="pt-0.5">{step}</span>
-                      </li>
-                    ))}
-                  </ol>
-                  <div className="mt-4 flex gap-2 rounded-xl bg-green-50 p-3 text-xs leading-relaxed text-green-800">
-                    <Shield className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
-                    <p>
-                      Agent 会自动审核是否符合平台规范，您只需在描述中说明要投放到哪个平台（如淘宝、抖音、小红书）。
-                      品牌 Logo、色板等资产请沉淀在素材库，创作时可直接引用。
-                    </p>
-                  </div>
-                </div>
-                <p className="text-center text-xs text-gray-400">在左侧输入需求开始创作</p>
-              </div>
+              <CampaignConfirmPanel
+                preview
+                campaign={previewCampaign}
+                materialType={materialType}
+                selectedSkuId={previewCampaign.selectedSkuId}
+                loading={false}
+                onSelectSku={() => {}}
+                onUpdateField={async () => {}}
+                onConfirm={() => {}}
+              />
             )}
 
             {campaign?.stage === "confirm" && campaign.requirement && (
-              <div className="mx-auto w-full max-w-xl space-y-4">
-                <div className="rounded-2xl bg-white p-5 shadow-sm">
-                  <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
-                    智能摘要 · 确认一次即可
-                  </p>
-
-                  <div className="mt-4 space-y-4">
-                    <section>
-                      <h3 className="text-xs font-semibold text-gray-500">需求理解</h3>
-                      <p className="mt-1 text-sm text-gray-900">
-                        {campaign.requirement.templateName} · {campaign.requirement.platform}
-                      </p>
-                      <p className="mt-0.5 text-xs text-gray-500">
-                        卖点：{campaign.requirement.sellingPoints}
-                        {campaign.requirement.promotion && ` · ${campaign.requirement.promotion}`}
-                      </p>
-                    </section>
-
-                    <section>
-                      <h3 className="text-xs font-semibold text-gray-500">推荐选品（可切换）</h3>
-                      <div className="mt-2 space-y-2">
-                        {campaign.recommendations.slice(0, 3).map((rec) => (
-                          <button
-                            key={rec.sku.id}
-                            type="button"
-                            onClick={() => selectSku(rec.sku.id)}
-                            className={cn(
-                              "flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors",
-                              selectedSkuId === rec.sku.id
-                                ? "border-gray-900 bg-gray-50"
-                                : "border-gray-200 hover:border-gray-300"
-                            )}
-                          >
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-medium text-gray-900">
-                                {rec.sku.name}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                ¥{rec.sku.price} · {rec.reason}
-                              </p>
-                            </div>
-                            {selectedSkuId === rec.sku.id && (
-                              <CheckCircle2 className="h-4 w-4 shrink-0 text-gray-900" />
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    </section>
-
-                    {campaign.creative && (
-                      <section>
-                        <h3 className="text-xs font-semibold text-gray-500">创意预设</h3>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {(
-                            [
-                              { label: "封题", value: campaign.creative.coverTitle },
-                              ...(materialType === "video"
-                                ? [{ label: "BGM", value: campaign.creative.bgm }]
-                                : []),
-                              { label: "CTA", value: campaign.creative.cta },
-                              ...(materialType === "video" && campaign.creative.storyboard
-                                ? [{ label: "分镜", value: campaign.creative.storyboard }]
-                                : []),
-                            ] as { label: string; value: string }[]
-                          ).map((chip) => (
-                            <span
-                              key={chip.label}
-                              className="rounded-lg bg-gray-100 px-2.5 py-1 text-xs text-gray-700"
-                            >
-                              {chip.label}：{chip.value}
-                            </span>
-                          ))}
-                        </div>
-                        <p className="mt-2 text-[11px] text-gray-400">
-                          左侧对话可微调，如「BGM 再快一点」「CTA 改成领券」
-                        </p>
-                      </section>
-                    )}
-                  </div>
-
-                  <Button
-                    className="mt-5 w-full"
-                    size="lg"
-                    onClick={confirmAndGenerate}
-                    loading={loading}
-                  >
-                    <Sparkles className="h-4 w-4" />
-                    确认并生成
-                  </Button>
-                </div>
-              </div>
+              <CampaignConfirmPanel
+                campaign={campaign}
+                materialType={materialType}
+                selectedSkuId={selectedSkuId}
+                loading={loading}
+                onSelectSku={selectSku}
+                onUpdateField={updateField}
+                onConfirm={confirmAndGenerate}
+              />
             )}
 
             {(campaign?.stage === "generating" || campaign?.stage === "external_review") && (

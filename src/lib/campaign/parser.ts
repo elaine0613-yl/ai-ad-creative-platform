@@ -111,7 +111,7 @@ export function agentReplyForStage(
 ): string {
   switch (stage) {
     case "confirm":
-      return `已按「${context.requirement?.templateName}」完成需求拆解、选品与创意预设。请确认摘要，一键即可生成并提交巨量审核。`;
+      return `已按「${context.requirement?.templateName}」完成需求拆解，右侧字段清单已同步。请核对并补充后，一键生成并提交审核。`;
     case "requirement_review":
       return `我已按「${context.requirement?.templateName}」模板拆解您的诉求，请确认右侧需求单是否准确。确认后将基于内部 SKU 表智能推荐选品。`;
     case "product_review":
@@ -138,6 +138,38 @@ export function newMessage(role: "user" | "agent", content: string): AgentMessag
     content,
     createdAt: new Date().toISOString(),
   };
+}
+
+export function applyRequirementTweak(
+  requirement: RequirementBrief,
+  userMessage: string
+): RequirementBrief {
+  const next = { ...requirement };
+  const t = userMessage;
+
+  const platforms = ["淘宝", "抖音", "小红书", "京东", "快手", "拼多多"];
+  for (const p of platforms) {
+    if (t.includes(p)) {
+      next.platform = p;
+      break;
+    }
+  }
+
+  const promo = extractPromotion(t);
+  if (promo) next.promotion = promo;
+
+  const price = extractPriceRange(t);
+  if (price) next.priceRange = price;
+
+  if (t.includes("卖点") || t.includes("强调")) {
+    const points = extractSellingPoints(t);
+    if (points !== "核心卖点待确认") next.sellingPoints = points;
+  }
+
+  const durationMatch = t.match(/(\d+)\s*秒/);
+  if (durationMatch) next.duration = Number(durationMatch[1]);
+
+  return next;
 }
 
 export function applyCreativeTweak(

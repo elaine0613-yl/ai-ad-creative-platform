@@ -3,9 +3,11 @@ import { requireAuth } from "@/lib/auth/session";
 import {
   agentReplyForStage,
   applyCreativeTweak,
+  applyRequirementTweak,
   buildCreativeBrief,
   newMessage,
 } from "@/lib/campaign/parser";
+import { applyFieldUpdates } from "@/lib/campaign/field-map";
 import { loadSkuPool, toSnapshot } from "@/lib/campaign/service";
 import { findSkuById } from "@/lib/mock/skus";
 import type { AgentMessage, CreativeBrief, RequirementBrief } from "@/lib/campaign/types";
@@ -75,15 +77,38 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (action === "tweak_creative" || action === "tweak") {
       const text = String(body.message ?? "");
       let creative = JSON.parse(campaign.creativeJson || "{}") as CreativeBrief;
+      const nextRequirement = applyRequirementTweak(requirement, text);
       creative = applyCreativeTweak(creative, text);
       messages.push(newMessage("user", text));
-      messages.push(newMessage("agent", "已更新方案，请继续确认或一键生成。"));
+      messages.push(newMessage("agent", "已更新右侧字段清单，请继续确认或一键生成。"));
 
       const updated = await prisma.campaign.update({
         where: { id },
         data: {
+          requirementJson: JSON.stringify(nextRequirement),
           creativeJson: JSON.stringify(creative),
           messagesJson: JSON.stringify(messages),
+        },
+      });
+      return jsonOk({ campaign: toSnapshot(updated, skuPool) });
+    }
+
+    if (action === "update_fields") {
+      const fields = (body.fields ?? {}) as Record<string, string>;
+      let creative = campaign.creativeJson
+        ? (JSON.parse(campaign.creativeJson) as CreativeBrief)
+        : null;
+      const { requirement: nextRequirement, creative: nextCreative } = applyFieldUpdates(
+        requirement,
+        creative,
+        fields
+      );
+
+      const updated = await prisma.campaign.update({
+        where: { id },
+        data: {
+          requirementJson: JSON.stringify(nextRequirement),
+          creativeJson: nextCreative ? JSON.stringify(nextCreative) : campaign.creativeJson,
         },
       });
       return jsonOk({ campaign: toSnapshot(updated, skuPool) });

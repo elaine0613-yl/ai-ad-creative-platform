@@ -63,6 +63,7 @@ export interface RequirementBrief {
   priceRange?: string;
   duration?: number;
   aspectRatio?: string;
+  supplementNotes?: string;
 }
 
 export interface SkuRecord {
