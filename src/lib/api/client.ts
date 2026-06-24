@@ -83,4 +83,27 @@ export const api = {
     list: (type?: string) =>
       request<{ materials: unknown[] }>(`/api/materials${type ? `?type=${type}` : ""}`),
   },
+  campaigns: {
+    create: (message: string) =>
+      request<{ campaign: import("@/lib/campaign/types").CampaignSnapshot }>("/api/campaigns", {
+        method: "POST",
+        body: JSON.stringify({ message }),
+      }),
+    get: (id: string) =>
+      request<{ campaign: import("@/lib/campaign/types").CampaignSnapshot }>(`/api/campaigns/${id}`),
+    action: (id: string, action: string, payload?: Record<string, unknown>) =>
+      request<{ campaign: import("@/lib/campaign/types").CampaignSnapshot }>(
+        `/api/campaigns/${id}/actions`,
+        { method: "POST", body: JSON.stringify({ action, ...payload }) }
+      ),
+    generate: (id: string) =>
+      request<{ campaign: import("@/lib/campaign/types").CampaignSnapshot; material: { id: string; url: string } }>(
+        `/api/campaigns/${id}/generate`,
+        { method: "POST" }
+      ),
+    auditStatus: (id: string) =>
+      request<{ status: string; campaign?: import("@/lib/campaign/types").CampaignSnapshot; reason?: string }>(
+        `/api/campaigns/${id}/audit-status`
+      ),
+  },
 };
