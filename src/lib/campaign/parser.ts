@@ -1,12 +1,18 @@
+import type { MaterialType } from "@/lib/types";
 import { BUSINESS_TEMPLATES } from "./templates";
 import type { AgentMessage, CreativeBrief, RequirementBrief } from "./types";
 
-export function matchTemplate(userIntent: string) {
+export function matchTemplate(userIntent: string, materialType?: MaterialType) {
+  const pool = materialType
+    ? BUSINESS_TEMPLATES.filter((t) => t.materialType === materialType)
+    : BUSINESS_TEMPLATES;
+  const candidates = pool.length > 0 ? pool : BUSINESS_TEMPLATES;
+
   const text = userIntent.toLowerCase();
-  let best = BUSINESS_TEMPLATES[0];
+  let best = candidates[0];
   let bestScore = 0;
 
-  for (const tpl of BUSINESS_TEMPLATES) {
+  for (const tpl of candidates) {
     let score = 0;
     for (const kw of tpl.keywords) {
       if (text.includes(kw.toLowerCase())) score += 2;
@@ -49,8 +55,11 @@ function extractPriceRange(text: string): string | undefined {
   return undefined;
 }
 
-export function parseRequirementFromIntent(userIntent: string): RequirementBrief {
-  const template = matchTemplate(userIntent);
+export function parseRequirementFromIntent(
+  userIntent: string,
+  materialType?: MaterialType
+): RequirementBrief {
+  const template = matchTemplate(userIntent, materialType);
   const productKeywords =
     userIntent.match(/做(.{2,12}?)[的,，]|推广(.{2,12}?)[,，]|(.{2,8}?)(防晒|耳机|面膜|零食)/)?.[1] ??
     userIntent.slice(0, 20);
@@ -101,6 +110,8 @@ export function agentReplyForStage(
   context: { requirement?: RequirementBrief; productName?: string }
 ): string {
   switch (stage) {
+    case "confirm":
+      return `已按「${context.requirement?.templateName}」完成需求拆解、选品与创意预设。请确认摘要，一键即可生成并提交巨量审核。`;
     case "requirement_review":
       return `我已按「${context.requirement?.templateName}」模板拆解您的诉求，请确认右侧需求单是否准确。确认后将基于内部 SKU 表智能推荐选品。`;
     case "product_review":

@@ -4,7 +4,6 @@ import { NAV_ITEMS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import {
   BookOpen,
-  Bot,
   FolderOpen,
   Image as ImageIcon,
   ListTodo,
@@ -16,7 +15,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const iconMap: Record<string, LucideIcon> = {
-  Bot,
   Image: ImageIcon,
   Video,
   BookOpen,

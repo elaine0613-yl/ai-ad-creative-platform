@@ -2,6 +2,7 @@ import type { MaterialType } from "@/lib/types";
 
 export type CampaignStage =
   | "intent"
+  | "confirm"
   | "requirement_review"
   | "product_review"
   | "creative_review"

@@ -1,9 +1,8 @@
 import type { KnowledgeCategory, NavItem, PlatformPreset } from "@/lib/types";
 
 export const NAV_ITEMS: NavItem[] = [
-  { label: "Agent 工作台", href: "/agent", icon: "Bot" },
-  { label: "图片创作", href: "/image/create", icon: "Image" },
-  { label: "视频创作", href: "/video/create", icon: "Video" },
+  { label: "文生图", href: "/image/create", icon: "Image" },
+  { label: "文生视频", href: "/video/create", icon: "Video" },
   { label: "知识库", href: "/knowledge", icon: "BookOpen" },
   { label: "素材库", href: "/materials", icon: "FolderOpen" },
   { label: "任务中心", href: "/tasks", icon: "ListTodo" },

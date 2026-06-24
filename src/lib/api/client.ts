@@ -84,10 +84,10 @@ export const api = {
       request<{ materials: unknown[] }>(`/api/materials${type ? `?type=${type}` : ""}`),
   },
   campaigns: {
-    create: (message: string) =>
+    create: (message: string, materialType?: "image" | "video") =>
       request<{ campaign: import("@/lib/campaign/types").CampaignSnapshot }>("/api/campaigns", {
         method: "POST",
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ message, materialType }),
       }),
     get: (id: string) =>
       request<{ campaign: import("@/lib/campaign/types").CampaignSnapshot }>(`/api/campaigns/${id}`),

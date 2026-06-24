@@ -2,12 +2,14 @@ import { jsonError, jsonOk, handleApiError } from "@/lib/api/response";
 import { requireAuth } from "@/lib/auth/session";
 import {
   agentReplyForStage,
+  buildCreativeBrief,
   newMessage,
   parseRequirementFromIntent,
 } from "@/lib/campaign/parser";
 import { buildRecommendations, toSnapshot } from "@/lib/campaign/service";
 import { matchTemplate } from "@/lib/campaign/parser";
 import { loadSkuPool } from "@/lib/campaign/service";
+import type { MaterialType } from "@/lib/types";
 import { prisma } from "@/lib/db/client";
 
 export async function POST(req: Request) {
@@ -15,26 +17,36 @@ export async function POST(req: Request) {
     const user = await requireAuth();
     const body = await req.json();
     const userIntent = String(body.message ?? body.userIntent ?? "").trim();
+    const materialType = (body.materialType as MaterialType) || undefined;
     if (!userIntent) return jsonError("请输入诉求");
 
-    const template = matchTemplate(userIntent);
-    const requirement = parseRequirementFromIntent(userIntent);
+    const template = matchTemplate(userIntent, materialType);
+    const requirement = parseRequirementFromIntent(userIntent, materialType);
+    requirement.materialType = template.materialType;
+
     const skuPool = await loadSkuPool();
     const recommendations = buildRecommendations(requirement, skuPool);
+    const topSku = recommendations[0]?.sku;
+    const creative = buildCreativeBrief(
+      requirement,
+      topSku?.name ?? requirement.productKeywords
+    );
 
     const messages = [
       newMessage("user", userIntent),
-      newMessage("agent", agentReplyForStage("requirement_review", { requirement })),
+      newMessage("agent", agentReplyForStage("confirm", { requirement })),
     ];
 
     const campaign = await prisma.campaign.create({
       data: {
         userId: user.id,
         templateId: template.id,
-        stage: "requirement_review",
+        stage: "confirm",
         userIntent,
         requirementJson: JSON.stringify(requirement),
         recommendationsJson: JSON.stringify(recommendations),
+        selectedSkuId: topSku?.id ?? null,
+        creativeJson: JSON.stringify(creative),
         messagesJson: JSON.stringify(messages),
       },
     });

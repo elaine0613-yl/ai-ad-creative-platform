@@ -72,16 +72,58 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return jsonOk({ campaign: toSnapshot(updated, skuPool) });
     }
 
-    if (action === "tweak_creative") {
+    if (action === "tweak_creative" || action === "tweak") {
       const text = String(body.message ?? "");
       let creative = JSON.parse(campaign.creativeJson || "{}") as CreativeBrief;
       creative = applyCreativeTweak(creative, text);
       messages.push(newMessage("user", text));
-      messages.push(newMessage("agent", "已更新创意方案，请确认右侧卡片。"));
+      messages.push(newMessage("agent", "已更新方案，请继续确认或一键生成。"));
 
       const updated = await prisma.campaign.update({
         where: { id },
         data: {
+          creativeJson: JSON.stringify(creative),
+          messagesJson: JSON.stringify(messages),
+        },
+      });
+      return jsonOk({ campaign: toSnapshot(updated, skuPool) });
+    }
+
+    if (action === "select_sku") {
+      const skuId = body.skuId as string;
+      if (!skuId) return jsonError("请选择 SKU");
+      const sku = findSkuById(skuId, skuPool);
+      if (!sku) return jsonError("SKU 不存在");
+      const creative = buildCreativeBrief(requirement, sku.name);
+      const updated = await prisma.campaign.update({
+        where: { id },
+        data: {
+          selectedSkuId: skuId,
+          creativeJson: JSON.stringify(creative),
+        },
+      });
+      return jsonOk({ campaign: toSnapshot(updated, skuPool) });
+    }
+
+    if (action === "confirm_and_generate") {
+      const skuId = (body.skuId as string) || campaign.selectedSkuId;
+      if (!skuId) return jsonError("请先选择商品");
+      const sku = findSkuById(skuId, skuPool);
+      if (!sku) return jsonError("SKU 不存在");
+
+      let creative = JSON.parse(campaign.creativeJson || "{}") as CreativeBrief;
+      if (!campaign.creativeJson || campaign.selectedSkuId !== skuId) {
+        creative = buildCreativeBrief(requirement, sku.name);
+      }
+
+      messages.push(newMessage("user", "确认并生成"));
+      messages.push(newMessage("agent", agentReplyForStage("generating", {})));
+
+      const updated = await prisma.campaign.update({
+        where: { id },
+        data: {
+          stage: "generating",
+          selectedSkuId: skuId,
           creativeJson: JSON.stringify(creative),
           messagesJson: JSON.stringify(messages),
         },
