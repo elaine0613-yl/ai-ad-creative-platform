@@ -1,5 +1,4 @@
 import type {
-  BrandProfile,
   CreativeIdea,
   DashboardStats,
   GenerationTask,
@@ -121,6 +120,48 @@ export const mockMaterials: Material[] = [
     createdAt: "2026-06-16",
     updatedAt: "2026-06-16",
   },
+  {
+    id: "mat-brand-1",
+    name: "阳光美妆 Logo",
+    type: "image",
+    thumbnailUrl: "/placeholder/material-1.jpg",
+    url: "/placeholder/material-1.jpg",
+    width: 512,
+    height: 512,
+    tags: ["品牌资产", "Logo", "阳光美妆"],
+    folderId: "brand-assets",
+    version: 1,
+    createdAt: "2026-06-10",
+    updatedAt: "2026-06-10",
+  },
+  {
+    id: "mat-brand-2",
+    name: "阳光美妆品牌色板",
+    type: "image",
+    thumbnailUrl: "/placeholder/material-2.jpg",
+    url: "/placeholder/material-2.jpg",
+    width: 800,
+    height: 400,
+    tags: ["品牌资产", "色板", "#FF6B9D"],
+    folderId: "brand-assets",
+    version: 1,
+    createdAt: "2026-06-10",
+    updatedAt: "2026-06-10",
+  },
+  {
+    id: "mat-brand-3",
+    name: "科技蓝品牌规范",
+    type: "image",
+    thumbnailUrl: "/placeholder/material-3.jpg",
+    url: "/placeholder/material-3.jpg",
+    width: 800,
+    height: 400,
+    tags: ["品牌资产", "色板", "3C"],
+    folderId: "brand-assets",
+    version: 1,
+    createdAt: "2026-06-08",
+    updatedAt: "2026-06-08",
+  },
 ];
 
 export const mockKnowledgeAssets: KnowledgeAsset[] = [
@@ -134,8 +175,6 @@ export const mockKnowledgeAssets: KnowledgeAsset[] = [
   { id: "ik-7", library: "image", categoryId: "lighting-mood", name: "柔光棚拍", description: "均匀柔光，减少阴影，适合产品质感展示", tags: ["柔光", "棚拍"], previewColor: "#E5E7EB" },
   { id: "ik-8", library: "image", categoryId: "copy-layout", name: "价格+卖点双层排版", description: "顶部主标题，中部卖点 bullet，底部价格+CTA", tags: ["价格标签", "CTA"], previewColor: "#DBEAFE" },
   { id: "ik-9", library: "image", categoryId: "product-display", name: "功效可视化", description: "用图标/箭头标注成分与功效，适合护肤、保健", tags: ["功效", "拆解"], previewColor: "#D1FAE5" },
-  { id: "ik-10", library: "image", categoryId: "platform-spec", name: "小红书封面 3:4", description: "1080×1440，顶部 15% 留安全区放标题", tags: ["小红书", "安全区"], previewColor: "#FCE7F3" },
-  { id: "ik-11", library: "image", categoryId: "brand-assets", name: "阳光美妆品牌规范", description: "主色 #FF6B9D，Logo 右上 12%，PingFang SC", tags: ["品牌色", "Logo"], previewColor: "#FF6B9D" },
   { id: "ik-12", library: "image", categoryId: "industry-template", name: "618 大促主图模板", description: "电商百货 · 800×800 · 促销红色调", tags: ["618", "电商"], previewColor: "#FCA5A5" },
   // 视频知识库
   { id: "vk-1", library: "video", categoryId: "bgm", name: "快节奏电子 BGM", description: "120 BPM，适合 15s 带货短视频卡点", tags: ["电子", "卡点"], previewColor: "#6366F1" },
@@ -204,31 +243,6 @@ export const mockTasks: GenerationTask[] = [
     failCount: 1,
     createdAt: "2026-06-18 16:00",
     errorMessage: "文案超出时长限制，请缩短至60字以内",
-  },
-];
-
-export const mockBrandProfiles: BrandProfile[] = [
-  {
-    id: "brand-1",
-    name: "阳光美妆",
-    slogan: "自然之美，由内而外",
-    logoPosition: "top-right",
-    logoSizePercent: 12,
-    primaryColor: "#FF6B9D",
-    secondaryColor: "#FFE4EC",
-    fontFamily: "PingFang SC",
-    isDefault: true,
-  },
-  {
-    id: "brand-2",
-    name: "智选数码",
-    slogan: "科技改变生活",
-    logoPosition: "bottom-left",
-    logoSizePercent: 10,
-    primaryColor: "#2563EB",
-    secondaryColor: "#DBEAFE",
-    fontFamily: "Helvetica Neue",
-    isDefault: false,
   },
 ];
 

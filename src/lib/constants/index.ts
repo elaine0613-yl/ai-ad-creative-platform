@@ -60,20 +60,6 @@ export const IMAGE_KNOWLEDGE_CATEGORIES: KnowledgeCategory[] = [
     terms: ["单品特写", "组合陈列", "前后对比", "成分拆解", "使用场景", "功效可视化"],
   },
   {
-    id: "platform-spec",
-    library: "image",
-    label: "平台规范",
-    description: "各投放渠道的尺寸、比例与安全区要求",
-    terms: ["淘宝主图", "京东主图", "小红书封面", "抖音信息流", "朋友圈海报", "安全区"],
-  },
-  {
-    id: "brand-assets",
-    library: "image",
-    label: "品牌资产",
-    description: "Logo、字体、品牌色与视觉规范统一管理",
-    terms: ["Logo 规范", "品牌色板", "标准字体", "Slogan", "辅助图形", "品牌禁区"],
-  },
-  {
     id: "industry-template",
     library: "image",
     label: "行业模板",

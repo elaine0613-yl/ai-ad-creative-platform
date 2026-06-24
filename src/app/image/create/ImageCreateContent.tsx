@@ -7,9 +7,9 @@ export default function ImageCreateContent() {
     <SmartCreationFlow
       materialType="image"
       title="图片创作"
-      subtitle="一句话描述 · Agent 自动拆解需求、选品、预设创意"
-      placeholder="描述您要生成的广告图…"
-      examplePrompt="618 淘宝主图，防晒产品，强调轻薄卖点，促销红色调"
+      subtitle="说明投放平台与创意需求 · Agent 拆解、选品、生成，并按平台自动审核入库"
+      placeholder="描述要投放到哪个平台、做什么广告图…"
+      examplePrompt="投放到淘宝：618 主图，防晒产品，强调轻薄卖点，促销红色调"
     />
   );
 }

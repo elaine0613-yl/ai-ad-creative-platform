@@ -9,13 +9,11 @@ import {
   Bot,
   CheckCircle2,
   Download,
-  Image as ImageIcon,
   Loader2,
   Send,
   Shield,
   Sparkles,
   User,
-  Video,
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -27,6 +25,14 @@ interface SmartCreationFlowProps {
   placeholder: string;
   examplePrompt: string;
 }
+
+const CREATION_WORKFLOW_STEPS = [
+  "描述需求与投放平台，Agent 自动拆解",
+  "确认推荐选品与创意预设",
+  "大模型自动生成图片或视频",
+  "按平台规范自动审核",
+  "审核通过自动入库，即可投放",
+];
 
 export function SmartCreationFlow({
   materialType,
@@ -156,8 +162,8 @@ export function SmartCreationFlow({
     <div className="flex flex-1 flex-col overflow-hidden">
       {/* 顶栏 */}
       <div className="shrink-0 border-b border-gray-200 bg-white px-6 py-4">
-        <h1 className="text-lg font-semibold text-gray-900">{title}</h1>
-        <p className="text-sm text-gray-500">{subtitle}</p>
+        <h1 className="text-xl font-semibold tracking-tight text-gray-900">{title}</h1>
+        <p className="mt-1 max-w-3xl text-sm leading-relaxed text-gray-500">{subtitle}</p>
       </div>
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
@@ -222,18 +228,28 @@ export function SmartCreationFlow({
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#f4f4f5]">
           <div className="flex flex-1 flex-col overflow-y-auto p-6">
             {!campaign && (
-              <div className="flex flex-1 flex-col items-center justify-center text-center">
-                <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-white shadow-sm">
-                  {materialType === "image" ? (
-                    <ImageIcon className="h-10 w-10 text-gray-300" />
-                  ) : (
-                    <Video className="h-10 w-10 text-gray-300" />
-                  )}
+              <div className="mx-auto flex w-full max-w-md flex-col gap-4">
+                <div className="rounded-2xl bg-white p-5 text-left shadow-sm">
+                  <p className="text-xs font-medium uppercase tracking-wide text-gray-400">功能说明</p>
+                  <ol className="mt-3 space-y-2.5">
+                    {CREATION_WORKFLOW_STEPS.map((step, index) => (
+                      <li key={step} className="flex gap-3 text-sm leading-snug text-gray-700">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700">
+                          {index + 1}
+                        </span>
+                        <span className="pt-0.5">{step}</span>
+                      </li>
+                    ))}
+                  </ol>
+                  <div className="mt-4 flex gap-2 rounded-xl bg-green-50 p-3 text-xs leading-relaxed text-green-800">
+                    <Shield className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
+                    <p>
+                      Agent 会自动审核是否符合平台规范，您只需在描述中说明要投放到哪个平台（如淘宝、抖音、小红书）。
+                      品牌 Logo、色板等资产请沉淀在素材库，创作时可直接引用。
+                    </p>
+                  </div>
                 </div>
-                <p className="mt-4 text-sm font-medium text-gray-600">一句话描述需求即可</p>
-                <p className="mt-1 max-w-sm text-xs text-gray-400">
-                  Agent 自动完成模板匹配、选品推荐、创意预设，您只需确认一次
-                </p>
+                <p className="text-center text-xs text-gray-400">在左侧输入需求开始创作</p>
               </div>
             )}
 

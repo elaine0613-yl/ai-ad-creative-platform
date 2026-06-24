@@ -26,14 +26,6 @@ export interface VideoFormKnowledgeTarget {
   useDigitalHuman?: boolean;
 }
 
-const IMAGE_PRESET_HINTS: Record<string, string> = {
-  淘宝: "taobao",
-  京东: "jd",
-  小红书: "xiaohongshu",
-  抖音: "douyin",
-  朋友圈: "wechat",
-};
-
 export function applyKnowledgeToImageForm(
   asset: KnowledgeAsset,
   current: ImageFormKnowledgeTarget
@@ -63,17 +55,6 @@ export function applyKnowledgeToImageForm(
     case "lighting-mood":
     case "product-display":
       patch.atmosphere = asset.name;
-      break;
-    case "platform-spec":
-      for (const [hint, presetId] of Object.entries(IMAGE_PRESET_HINTS)) {
-        if (asset.name.includes(hint) || asset.tags.some((t) => t.includes(hint))) {
-          patch.preset = presetId;
-          break;
-        }
-      }
-      break;
-    case "brand-assets":
-      patch.style = current.style ?? "简约";
       break;
     case "industry-template":
       if (asset.tags.includes("618") || asset.tags.includes("大促")) {

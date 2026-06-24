@@ -38,10 +38,11 @@ export default function MaterialsPage() {
     <>
       <PageHeader
         title="素材库"
-        description="管理 AI 生成的图片与视频成品，支持分类、标签与版本回溯"
+        description="管理 AI 生成的图片与视频成品，以及 Logo、色板等品牌素材"
+        hideGlobalSearch
         actions={
-          selected.length > 0 && (
-            <div className="flex gap-2">
+          selected.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm">
                 <Tag className="h-3.5 w-3.5" />
                 打标签
@@ -55,20 +56,69 @@ export default function MaterialsPage() {
                 删除
               </Button>
             </div>
-          )
+          ) : undefined
+        }
+        toolbar={
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <div className="relative min-w-0 flex-1 lg:max-w-md">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                placeholder="搜索素材名称、标签..."
+                className="pl-9"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium text-gray-400">类型</span>
+              {(["all", "image", "video"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTypeFilter(t)}
+                  className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                    typeFilter === t
+                      ? "bg-brand-100 text-brand-700"
+                      : "text-gray-600 hover:bg-gray-100"
+                  }`}
+                >
+                  {t === "all" ? "全部" : t === "image" ? "图片" : "视频"}
+                </button>
+              ))}
+              <div className="ml-1 flex rounded-lg border border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("grid")}
+                  className={`p-2 ${viewMode === "grid" ? "bg-gray-100 text-gray-900" : "text-gray-500"}`}
+                  aria-label="网格视图"
+                >
+                  <Grid3X3 className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("list")}
+                  className={`p-2 ${viewMode === "list" ? "bg-gray-100 text-gray-900" : "text-gray-500"}`}
+                  aria-label="列表视图"
+                >
+                  <List className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
         }
       />
 
       <div className="flex flex-1 overflow-hidden">
         {/* Folder Tree */}
         <div className="w-56 shrink-0 overflow-y-auto border-r border-gray-200 bg-white p-4">
-          <p className="mb-3 text-xs font-medium uppercase text-gray-400">文件夹</p>
+          <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">文件夹</p>
           <div className="space-y-1">
-            {["全部素材", "图片素材", "视频素材", "618 大促", "防晒系列"].map((folder, i) => (
+            {["全部素材", "图片素材", "视频素材", "品牌资产", "618 大促", "防晒系列"].map((folder, i) => (
               <button
                 key={folder}
-                className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm ${
-                  i === 0 ? "bg-brand-50 text-brand-700" : "text-gray-600 hover:bg-gray-50"
+                type="button"
+                className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm leading-snug ${
+                  i === 0 ? "bg-brand-50 font-medium text-brand-700" : "text-gray-600 hover:bg-gray-50"
                 }`}
               >
                 <FolderOpen className="h-4 w-4" />
@@ -80,45 +130,6 @@ export default function MaterialsPage() {
 
         {/* Material Grid */}
         <div className="flex-1 overflow-y-auto p-6">
-          <div className="mb-4 flex items-center gap-4">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <Input
-                placeholder="搜索素材名称、标签..."
-                className="pl-9"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-            <div className="flex gap-1">
-              {(["all", "image", "video"] as const).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setTypeFilter(t)}
-                  className={`rounded-lg px-3 py-1.5 text-sm ${
-                    typeFilter === t ? "bg-brand-100 text-brand-700" : "text-gray-500 hover:bg-gray-100"
-                  }`}
-                >
-                  {t === "all" ? "全部" : t === "image" ? "图片" : "视频"}
-                </button>
-              ))}
-            </div>
-            <div className="flex rounded-lg border border-gray-200">
-              <button
-                onClick={() => setViewMode("grid")}
-                className={`p-2 ${viewMode === "grid" ? "bg-gray-100" : ""}`}
-              >
-                <Grid3X3 className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => setViewMode("list")}
-                className={`p-2 ${viewMode === "list" ? "bg-gray-100" : ""}`}
-              >
-                <List className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-
           {filtered.length === 0 ? (
             <EmptyState
               icon={<FolderOpen className="h-12 w-12" />}

@@ -8,7 +8,7 @@ import {
   IMAGE_KNOWLEDGE_CATEGORIES,
   VIDEO_KNOWLEDGE_CATEGORIES,
 } from "@/lib/constants";
-import { mockBrandProfiles, mockKnowledgeAssets, mockTemplates } from "@/lib/mock/data";
+import { mockKnowledgeAssets, mockTemplates } from "@/lib/mock/data";
 import type { KnowledgeLibraryType } from "@/lib/types";
 import { BookOpen, Image as ImageIcon, Plus, Search, Sparkles, Video } from "lucide-react";
 import Link from "next/link";
@@ -54,15 +54,14 @@ function KnowledgeContent() {
     return mockTemplates.filter((t) => t.type === library);
   }, [currentCategory.id, library]);
 
-  const showBrandSection = library === "image" && currentCategory.id === "brand-assets";
-
   const createHref = library === "image" ? "/image/create" : "/video/create";
 
   return (
     <>
       <PageHeader
         title="知识库"
-        description="沉淀图片与视频广告制作经验，创作时一键引用模板、品牌与行业术语"
+        description="沉淀图片与视频广告制作经验，创作时一键引用"
+        hideGlobalSearch
         actions={
           <Link href={createHref}>
             <Button size="sm">
@@ -71,55 +70,56 @@ function KnowledgeContent() {
             </Button>
           </Link>
         }
-      />
-
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {/* 图片 / 视频知识库切换 */}
-        <div className="border-b border-gray-200 bg-white px-6 py-3">
-          <div className="flex gap-2">
+        toolbar={
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="mr-1 text-xs font-medium text-gray-400">库类型</span>
             <button
+              type="button"
               onClick={() => {
                 setLibrary("image");
                 setActiveCategory(IMAGE_KNOWLEDGE_CATEGORIES[0].id);
               }}
-              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors ${
                 library === "image"
                   ? "bg-brand-100 text-brand-700"
-                  : "text-gray-500 hover:bg-gray-100"
+                  : "text-gray-600 hover:bg-gray-100"
               }`}
             >
-              <ImageIcon className="h-4 w-4" />
+              <ImageIcon className="h-4 w-4 shrink-0" />
               图片知识库
             </button>
             <button
+              type="button"
               onClick={() => {
                 setLibrary("video");
                 setActiveCategory(VIDEO_KNOWLEDGE_CATEGORIES[0].id);
               }}
-              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors ${
                 library === "video"
                   ? "bg-brand-100 text-brand-700"
-                  : "text-gray-500 hover:bg-gray-100"
+                  : "text-gray-600 hover:bg-gray-100"
               }`}
             >
-              <Video className="h-4 w-4" />
+              <Video className="h-4 w-4 shrink-0" />
               视频知识库
             </button>
           </div>
-        </div>
+        }
+      />
 
-        <div className="flex flex-1 overflow-hidden">
-          {/* 分类侧栏 */}
-          <aside className="w-56 shrink-0 overflow-y-auto border-r border-gray-200 bg-gray-50 p-3">
-            <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+      <div className="flex flex-1 overflow-hidden">
+        {/* 分类侧栏 */}
+        <aside className="w-56 shrink-0 overflow-y-auto border-r border-gray-200 bg-gray-50 p-3">
+            <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
               {library === "image" ? "平面广告结构" : "短视频制作要素"}
             </p>
             <nav className="space-y-0.5">
               {categories.map((cat) => (
                 <button
                   key={cat.id}
+                  type="button"
                   onClick={() => setActiveCategory(cat.id)}
-                  className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                  className={`w-full rounded-lg px-3 py-2.5 text-left text-sm leading-snug transition-colors ${
                     activeCategory === cat.id
                       ? "bg-white font-medium text-brand-700 shadow-sm"
                       : "text-gray-600 hover:bg-white/60"
@@ -168,47 +168,6 @@ function KnowledgeContent() {
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
-
-              {/* 品牌资产专区 */}
-              {showBrandSection && (
-                <div className="mb-8">
-                  <h3 className="mb-3 text-sm font-semibold text-gray-700">品牌方案</h3>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    {mockBrandProfiles.map((profile) => (
-                      <Card key={profile.id} className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="h-10 w-10 rounded-lg"
-                            style={{ backgroundColor: profile.primaryColor }}
-                          />
-                          <div>
-                            <p className="font-medium text-gray-900">{profile.name}</p>
-                            <p className="text-xs text-gray-500">{profile.slogan}</p>
-                          </div>
-                          {profile.isDefault && (
-                            <span className="ml-auto rounded bg-brand-50 px-2 py-0.5 text-[10px] text-brand-600">
-                              默认
-                            </span>
-                          )}
-                        </div>
-                        <div className="mt-3 flex gap-2">
-                          <div
-                            className="h-5 w-5 rounded"
-                            style={{ backgroundColor: profile.primaryColor }}
-                            title="主色"
-                          />
-                          <div
-                            className="h-5 w-5 rounded"
-                            style={{ backgroundColor: profile.secondaryColor }}
-                            title="辅色"
-                          />
-                          <span className="text-xs text-gray-400">{profile.fontFamily}</span>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               {/* 模板专区 */}
               {templatesInCategory.length > 0 && (
@@ -269,14 +228,13 @@ function KnowledgeContent() {
                 ))}
               </div>
 
-              {assets.length === 0 && !showBrandSection && templatesInCategory.length === 0 && (
+              {assets.length === 0 && templatesInCategory.length === 0 && (
                 <div className="rounded-xl border border-dashed border-gray-200 py-16 text-center">
                   <BookOpen className="mx-auto h-10 w-10 text-gray-300" />
                   <p className="mt-3 text-sm text-gray-500">暂无匹配的{currentCategory.label}资产</p>
                 </div>
               )}
             </div>
-          </div>
         </div>
       </div>
     </>
