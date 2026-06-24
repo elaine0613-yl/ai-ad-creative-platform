@@ -3,6 +3,13 @@
 import { Button } from "@/components/ui/Button";
 import { CampaignConfirmPanel } from "@/components/create/CampaignConfirmPanel";
 import { api } from "@/lib/api/client";
+import {
+  appendInteractionLog,
+  buildFieldUpdates,
+  buildOptimisticCampaign,
+  diffFieldKeys,
+  type InteractionLogEntry,
+} from "@/lib/campaign/live-sync";
 import { buildMockCampaignPreview } from "@/lib/campaign/mock-preview";
 import type { CampaignSnapshot } from "@/lib/campaign/types";
 import type { MaterialType } from "@/lib/types";
@@ -34,23 +41,78 @@ export function SmartCreationFlow({
   examplePrompt,
 }: SmartCreationFlowProps) {
   const [campaign, setCampaign] = useState<CampaignSnapshot | null>(null);
+  const [optimisticCampaign, setOptimisticCampaign] = useState<CampaignSnapshot | null>(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [interactionLog, setInteractionLog] = useState<InteractionLogEntry[]>([]);
+  const [highlightedFields, setHighlightedFields] = useState<string[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const previewCampaign = useMemo(
     () => buildMockCampaignPreview(materialType),
     [materialType]
   );
 
+  const liveInputCampaign = useMemo(() => {
+    const text = input.trim();
+    if (!text || campaign) return null;
+    return buildOptimisticCampaign(text, materialType);
+  }, [input, campaign, materialType]);
+
+  const displayCampaign =
+    optimisticCampaign ?? campaign ?? liveInputCampaign ?? previewCampaign;
+
+  const isLivePreview = !campaign && !!liveInputCampaign;
+  const isStaticPreview = !campaign && !liveInputCampaign;
+  const isConfirmStage = campaign?.stage === "confirm" && !!campaign.requirement;
+
   const selectedSkuId =
-    campaign?.selectedSkuId ?? campaign?.recommendations[0]?.sku.id ?? null;
+    displayCampaign.selectedSkuId ?? displayCampaign.recommendations[0]?.sku.id ?? null;
+
+  const flashFields = useCallback((keys: string[]) => {
+    if (keys.length === 0) return;
+    setHighlightedFields(keys);
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    highlightTimerRef.current = setTimeout(() => setHighlightedFields([]), 2400);
+  }, []);
+
+  const recordFieldSync = useCallback(
+    (
+      role: "user" | "agent",
+      message: string,
+      prev: CampaignSnapshot | null,
+      next: CampaignSnapshot
+    ) => {
+      const keys = diffFieldKeys(prev, next, materialType);
+      flashFields(keys);
+      const fieldUpdates = buildFieldUpdates(next, materialType, keys);
+      if (fieldUpdates.length === 0 && role === "user") return;
+      setInteractionLog((log) =>
+        appendInteractionLog(log, {
+          id: `log-${Date.now()}`,
+          role,
+          message,
+          fieldUpdates,
+          at: new Date().toISOString(),
+        })
+      );
+    },
+    [flashFields, materialType]
+  );
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [campaign?.messages]);
+  }, [campaign?.messages, optimisticCampaign?.messages]);
+
+  useEffect(
+    () => () => {
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    },
+    []
+  );
 
   const pollAudit = useCallback((id: string) => {
     if (pollRef.current) clearInterval(pollRef.current);
@@ -72,10 +134,15 @@ export function SmartCreationFlow({
   }, []);
 
   const startNew = async (text: string) => {
+    const optimistic = buildOptimisticCampaign(text, materialType);
+    setOptimisticCampaign(optimistic);
+    recordFieldSync("user", text, null, optimistic);
     setLoading(true);
     try {
       const { campaign: c } = await api.campaigns.create(text, materialType);
       setCampaign(c);
+      setOptimisticCampaign(null);
+      recordFieldSync("agent", c.messages[c.messages.length - 1]?.content ?? "需求已拆解", optimistic, c);
       setPreviewUrl(null);
     } finally {
       setLoading(false);
@@ -93,12 +160,22 @@ export function SmartCreationFlow({
     }
 
     if (campaign.stage === "confirm") {
+      const optimistic = buildOptimisticCampaign(text, materialType, campaign);
+      setOptimisticCampaign(optimistic);
+      recordFieldSync("user", text, campaign, optimistic);
       setLoading(true);
       try {
         const { campaign: c } = await api.campaigns.action(campaign.id, "tweak", {
           message: text,
         });
         setCampaign(c);
+        setOptimisticCampaign(null);
+        recordFieldSync(
+          "agent",
+          c.messages[c.messages.length - 1]?.content ?? "已更新字段",
+          optimistic,
+          c
+        );
       } finally {
         setLoading(false);
       }
@@ -106,6 +183,7 @@ export function SmartCreationFlow({
     }
 
     if (campaign.stage === "completed" || campaign.stage === "rejected") {
+      setInteractionLog([]);
       await startNew(text);
     }
   };
@@ -117,6 +195,8 @@ export function SmartCreationFlow({
       const { campaign: c } = await api.campaigns.action(campaign.id, "select_sku", {
         skuId,
       });
+      const keys = diffFieldKeys(campaign, c, materialType);
+      flashFields(keys);
       setCampaign(c);
     } finally {
       setLoading(false);
@@ -128,6 +208,7 @@ export function SmartCreationFlow({
     const { campaign: c } = await api.campaigns.action(campaign.id, "update_fields", {
       fields: { [fieldKey]: value },
     });
+    flashFields([fieldKey]);
     setCampaign(c);
   };
 
@@ -163,16 +244,17 @@ export function SmartCreationFlow({
     campaign?.stage === "generating" ||
     campaign?.stage === "external_review";
 
+  const showFieldPanel =
+    isStaticPreview || isLivePreview || isConfirmStage;
+
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      {/* 顶栏 */}
       <div className="shrink-0 border-b border-gray-200 bg-white px-6 py-4">
         <h1 className="text-xl font-semibold tracking-tight text-gray-900">{title}</h1>
         <p className="mt-1 max-w-3xl text-sm leading-relaxed text-gray-500">{subtitle}</p>
       </div>
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        {/* 左：对话（Agent 融入） */}
         <div className="flex w-[380px] shrink-0 flex-col border-r border-gray-200 bg-white">
           <div className="flex-1 space-y-3 overflow-y-auto p-4">
             {!campaign && (
@@ -182,7 +264,7 @@ export function SmartCreationFlow({
               </div>
             )}
 
-            {campaign?.messages.map((msg) => (
+            {(optimisticCampaign ?? campaign)?.messages.map((msg) => (
               <div
                 key={msg.id}
                 className={cn("flex gap-2", msg.role === "user" && "flex-row-reverse")}
@@ -209,6 +291,18 @@ export function SmartCreationFlow({
                 </p>
               </div>
             ))}
+
+            {loading && optimisticCampaign && (
+              <div className="flex gap-2">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-700">
+                  <Bot className="h-3.5 w-3.5" />
+                </div>
+                <p className="rounded-2xl bg-gray-100 px-3 py-2 text-sm text-gray-500">
+                  Agent 正在同步字段…
+                </p>
+              </div>
+            )}
+
             <div ref={chatEndRef} />
           </div>
 
@@ -229,28 +323,19 @@ export function SmartCreationFlow({
           </div>
         </div>
 
-        {/* 右：确认摘要 + 预览 */}
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#f4f4f5]">
           <div className="flex flex-1 flex-col overflow-y-auto p-6">
-            {!campaign && (
+            {showFieldPanel && (
               <CampaignConfirmPanel
-                preview
-                campaign={previewCampaign}
-                materialType={materialType}
-                selectedSkuId={previewCampaign.selectedSkuId}
-                loading={false}
-                onSelectSku={() => {}}
-                onUpdateField={async () => {}}
-                onConfirm={() => {}}
-              />
-            )}
-
-            {campaign?.stage === "confirm" && campaign.requirement && (
-              <CampaignConfirmPanel
-                campaign={campaign}
+                preview={isStaticPreview}
+                livePreview={isLivePreview}
+                syncing={loading && (isConfirmStage || isLivePreview)}
+                campaign={displayCampaign}
                 materialType={materialType}
                 selectedSkuId={selectedSkuId}
                 loading={loading}
+                highlightedFields={highlightedFields}
+                interactionLog={interactionLog}
                 onSelectSku={selectSku}
                 onUpdateField={updateField}
                 onConfirm={confirmAndGenerate}
