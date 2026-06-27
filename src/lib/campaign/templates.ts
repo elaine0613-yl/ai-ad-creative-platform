@@ -50,6 +50,27 @@ export const BUSINESS_TEMPLATES: BusinessTemplate[] = [
     },
   },
   {
+    id: "douyin-coupon-image",
+    name: "省钱神券外投图片",
+    description: "抖音外投信息流图片，适合领券省钱、捡漏类表达",
+    keywords: ["省钱", "神券", "外投", "捡漏", "领券", "划算", "抖音", "图片"],
+    materialType: "image",
+    platform: "抖音",
+    industry: "电商百货",
+    selectionRules: {
+      categories: ["家居百货", "母婴文教", "服饰鞋包", "食品饮料", "3C数码"],
+      tagsAny: ["省钱", "捡漏", "高性价比", "大促", "热销"],
+      priceMin: 29,
+      priceMax: 399,
+    },
+    creativeDefaults: {
+      aspectRatio: "9:16",
+      cta: "扫码领券",
+      coverTitle: "领券后更划算",
+      platform: "抖音",
+    },
+  },
+  {
     id: "douyin-3c-video",
     name: "抖音 3C 产品展示",
     description: "科技感产品展示短视频，适合数码品类",

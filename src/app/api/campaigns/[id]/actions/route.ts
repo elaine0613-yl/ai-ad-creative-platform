@@ -1,5 +1,7 @@
 import { jsonOk, handleApiError, jsonError } from "@/lib/api/response";
 import { requireAuth } from "@/lib/auth/session";
+import { applyFieldUpdates } from "@/lib/campaign/field-map";
+import { buildFullCreativePlan, parseCreativePackage } from "@/lib/campaign/creative-plan";
 import {
   agentReplyForStage,
   applyCreativeTweak,
@@ -7,7 +9,6 @@ import {
   buildCreativeBrief,
   newMessage,
 } from "@/lib/campaign/parser";
-import { applyFieldUpdates } from "@/lib/campaign/field-map";
 import { loadSkuPool, toSnapshot } from "@/lib/campaign/service";
 import { findSkuById } from "@/lib/mock/skus";
 import type { AgentMessage, CreativeBrief, RequirementBrief } from "@/lib/campaign/types";
@@ -19,6 +20,10 @@ async function getCampaign(id: string, userId: string) {
 
 function parseMessages(json: string): AgentMessage[] {
   return JSON.parse(json || "[]");
+}
+
+function parseCreative(json: string | null) {
+  return parseCreativePackage(json)?.brief ?? null;
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -34,9 +39,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const skuPool = await loadSkuPool();
     const messages = parseMessages(campaign.messagesJson);
     const requirement = JSON.parse(campaign.requirementJson) as RequirementBrief;
+    const stage = campaign.stage;
 
     if (action === "confirm_requirement") {
-      messages.push(newMessage("user", "需求确认 OK"));
+      if (stage !== "confirm" && stage !== "requirement_review") {
+        return jsonError("当前阶段无法确认需求");
+      }
+      messages.push(newMessage("user", "确认基础信息"));
       messages.push(
         newMessage("agent", agentReplyForStage("product_review", { requirement }))
       );
@@ -50,65 +59,28 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return jsonOk({ campaign: toSnapshot(updated, skuPool) });
     }
 
-    if (action === "confirm_product") {
-      const skuId = body.skuId as string;
-      if (!skuId) return jsonError("请选择 SKU");
-      const sku = findSkuById(skuId, skuPool);
-      if (!sku) return jsonError("SKU 不存在");
-
-      const creative = buildCreativeBrief(requirement, sku.name);
-      messages.push(newMessage("user", `选品确认：${sku.name}`));
+    if (action === "run_selection") {
+      if (stage !== "confirm" && stage !== "product_review") {
+        return jsonError("当前阶段无法执行选品");
+      }
+      if (requirement.landingType && requirement.landingType !== "商品") {
+        return jsonError("非商品承接类型，无法选品");
+      }
+      const { buildRecommendations } = await import("@/lib/campaign/service");
+      const recommendations = buildRecommendations(requirement, skuPool);
+      messages.push(newMessage("user", "Agent 智能选品"));
       messages.push(
-        newMessage("agent", agentReplyForStage("creative_review", { productName: sku.name }))
+        newMessage(
+          "agent",
+          `已按选品策略筛选 ${recommendations.length} 个商品，请核对并多选确认。`
+        )
       );
-
       const updated = await prisma.campaign.update({
         where: { id },
         data: {
-          stage: "creative_review",
-          selectedSkuId: skuId,
-          creativeJson: JSON.stringify(creative),
+          stage: "product_review",
+          recommendationsJson: JSON.stringify(recommendations),
           messagesJson: JSON.stringify(messages),
-        },
-      });
-      return jsonOk({ campaign: toSnapshot(updated, skuPool) });
-    }
-
-    if (action === "tweak_creative" || action === "tweak") {
-      const text = String(body.message ?? "");
-      let creative = JSON.parse(campaign.creativeJson || "{}") as CreativeBrief;
-      const nextRequirement = applyRequirementTweak(requirement, text);
-      creative = applyCreativeTweak(creative, text);
-      messages.push(newMessage("user", text));
-      messages.push(newMessage("agent", "已更新右侧字段清单，请继续确认或一键生成。"));
-
-      const updated = await prisma.campaign.update({
-        where: { id },
-        data: {
-          requirementJson: JSON.stringify(nextRequirement),
-          creativeJson: JSON.stringify(creative),
-          messagesJson: JSON.stringify(messages),
-        },
-      });
-      return jsonOk({ campaign: toSnapshot(updated, skuPool) });
-    }
-
-    if (action === "update_fields") {
-      const fields = (body.fields ?? {}) as Record<string, string>;
-      let creative = campaign.creativeJson
-        ? (JSON.parse(campaign.creativeJson) as CreativeBrief)
-        : null;
-      const { requirement: nextRequirement, creative: nextCreative } = applyFieldUpdates(
-        requirement,
-        creative,
-        fields
-      );
-
-      const updated = await prisma.campaign.update({
-        where: { id },
-        data: {
-          requirementJson: JSON.stringify(nextRequirement),
-          creativeJson: nextCreative ? JSON.stringify(nextCreative) : campaign.creativeJson,
         },
       });
       return jsonOk({ campaign: toSnapshot(updated, skuPool) });
@@ -119,27 +91,187 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       if (!skuId) return jsonError("请选择 SKU");
       const sku = findSkuById(skuId, skuPool);
       if (!sku) return jsonError("SKU 不存在");
-      const creative = buildCreativeBrief(requirement, sku.name);
+      const updated = await prisma.campaign.update({
+        where: { id },
+        data: { selectedSkuId: skuId },
+      });
+      return jsonOk({ campaign: toSnapshot(updated, skuPool) });
+    }
+
+    if (action === "confirm_product") {
+      if (stage !== "product_review") return jsonError("请先完成基础信息确认");
+      const skuIds = (body.skuIds as string[] | undefined) ?? [];
+      const single = (body.skuId as string) || campaign.selectedSkuId;
+      const ids = skuIds.length > 0 ? skuIds : single ? [single] : [];
+      if (ids.length === 0) return jsonError("请至少选择一个商品");
+
+      for (const sid of ids) {
+        if (!findSkuById(sid, skuPool)) return jsonError(`SKU 不存在: ${sid}`);
+      }
+
+      const nextRequirement = {
+        ...requirement,
+        confirmedSkuIds: ids,
+      };
+
+      const skus = ids
+        .map((sid) => findSkuById(sid, skuPool))
+        .filter((s): s is NonNullable<typeof s> => !!s);
+      const primarySku = skus[0]!;
+      const plan = buildFullCreativePlan(nextRequirement, primarySku, campaign.userIntent, skus);
+
+      messages.push(newMessage("user", `选品确认：${ids.length} 个商品`));
+      messages.push(
+        newMessage(
+          "agent",
+          `选品已确认，已结合诉求与 ${ids.length} 个商品生成创意方案。请查看下方「创意生成」模块，点击「一键配置」写入各模块配置。`
+        )
+      );
+
       const updated = await prisma.campaign.update({
         where: { id },
         data: {
-          selectedSkuId: skuId,
-          creativeJson: JSON.stringify(creative),
+          stage: "creative_review",
+          selectedSkuId: ids[0],
+          requirementJson: JSON.stringify(nextRequirement),
+          creativeJson: JSON.stringify(plan),
+          messagesJson: JSON.stringify(messages),
         },
       });
       return jsonOk({ campaign: toSnapshot(updated, skuPool) });
     }
 
+    if (action === "generate_creative") {
+      if (stage !== "creative_review") return jsonError("请先完成选品确认");
+      const skuId = campaign.selectedSkuId;
+      if (!skuId) return jsonError("请先选择商品");
+      const sku = findSkuById(skuId, skuPool);
+      if (!sku) return jsonError("SKU 不存在");
+
+      const confirmedIds = requirement.confirmedSkuIds ?? [skuId];
+      const skus = confirmedIds
+        .map((sid) => findSkuById(sid, skuPool))
+        .filter((s): s is NonNullable<typeof s> => !!s);
+
+      const plan = buildFullCreativePlan(requirement, sku, campaign.userIntent, skus);
+      messages.push(newMessage("user", "重新生成创意"));
+      messages.push(
+        newMessage(
+          "agent",
+          `创意方案已更新。请查看「创意生成」长文描述，点击「一键配置」同步至下方各模块。`
+        )
+      );
+
+      const updated = await prisma.campaign.update({
+        where: { id },
+        data: {
+          creativeJson: JSON.stringify(plan),
+          messagesJson: JSON.stringify(messages),
+        },
+      });
+      return jsonOk({ campaign: toSnapshot(updated, skuPool) });
+    }
+
+    if (action === "confirm_creative") {
+      if (stage !== "creative_review") return jsonError("当前阶段无法开始生成");
+      if (!parseCreative(campaign.creativeJson)) return jsonError("请先生成创意方案");
+
+      messages.push(newMessage("user", "确认创意，开始生成"));
+      messages.push(newMessage("agent", agentReplyForStage("generating", {})));
+
+      const updated = await prisma.campaign.update({
+        where: { id },
+        data: {
+          stage: "generating",
+          messagesJson: JSON.stringify(messages),
+        },
+      });
+      return jsonOk({ campaign: toSnapshot(updated, skuPool) });
+    }
+
+    if (action === "tweak_creative" || action === "tweak") {
+      const text = String(body.message ?? "");
+      const nextRequirement = applyRequirementTweak(requirement, text);
+      let creative = parseCreative(campaign.creativeJson);
+
+      if (creative && (stage === "creative_review" || stage === "confirm")) {
+        creative = applyCreativeTweak(creative, text);
+      }
+
+      messages.push(newMessage("user", text));
+      messages.push(
+        newMessage(
+          "agent",
+          creative
+            ? "已更新需求清单与创意方案，请继续确认。"
+            : "已更新右侧字段清单，请继续补充或确认。"
+        )
+      );
+
+      const updated = await prisma.campaign.update({
+        where: { id },
+        data: {
+          requirementJson: JSON.stringify(nextRequirement),
+          creativeJson: creative ? JSON.stringify(creative) : campaign.creativeJson,
+          messagesJson: JSON.stringify(messages),
+        },
+      });
+      return jsonOk({ campaign: toSnapshot(updated, skuPool) });
+    }
+
+    if (action === "update_fields") {
+      const fields = (body.fields ?? {}) as Record<string, string>;
+      const creative = parseCreative(campaign.creativeJson);
+      const { requirement: nextRequirement, creative: nextCreative } = applyFieldUpdates(
+        requirement,
+        creative,
+        fields
+      );
+
+      let recommendationsJson = campaign.recommendationsJson;
+      if (
+        ("selectionCount" in fields || "selectionStrategy" in fields || "productKeywords" in fields) &&
+        (stage === "confirm" || stage === "requirement_review")
+      ) {
+        const { buildRecommendations } = await import("@/lib/campaign/service");
+        recommendationsJson = JSON.stringify(buildRecommendations(nextRequirement, skuPool));
+      }
+
+      const updated = await prisma.campaign.update({
+        where: { id },
+        data: {
+          requirementJson: JSON.stringify(nextRequirement),
+          creativeJson: nextCreative ? JSON.stringify(nextCreative) : campaign.creativeJson,
+          recommendationsJson,
+        },
+      });
+      return jsonOk({ campaign: toSnapshot(updated, skuPool) });
+    }
+
+    if (action === "remove_recommendation") {
+      const skuId = body.skuId as string;
+      if (!skuId) return jsonError("缺少 skuId");
+      const recommendations = JSON.parse(campaign.recommendationsJson || "[]") as import("@/lib/campaign/types").ProductRecommendation[];
+      const next = recommendations.filter((r) => r.sku.id !== skuId);
+      const updated = await prisma.campaign.update({
+        where: { id },
+        data: {
+          recommendationsJson: JSON.stringify(next),
+          selectedSkuId: campaign.selectedSkuId === skuId ? null : campaign.selectedSkuId,
+        },
+      });
+      return jsonOk({ campaign: toSnapshot(updated, skuPool) });
+    }
+
+    /** @deprecated 使用分步 confirm_creative + generate */
     if (action === "confirm_and_generate") {
       const skuId = (body.skuId as string) || campaign.selectedSkuId;
       if (!skuId) return jsonError("请先选择商品");
       const sku = findSkuById(skuId, skuPool);
       if (!sku) return jsonError("SKU 不存在");
 
-      let creative = JSON.parse(campaign.creativeJson || "{}") as CreativeBrief;
-      if (!campaign.creativeJson || campaign.selectedSkuId !== skuId) {
-        creative = buildCreativeBrief(requirement, sku.name);
-      }
+      let creative = parseCreative(campaign.creativeJson);
+      if (!creative) creative = buildCreativeBrief(requirement, sku.name);
 
       messages.push(newMessage("user", "确认并生成"));
       messages.push(newMessage("agent", agentReplyForStage("generating", {})));
@@ -150,20 +282,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           stage: "generating",
           selectedSkuId: skuId,
           creativeJson: JSON.stringify(creative),
-          messagesJson: JSON.stringify(messages),
-        },
-      });
-      return jsonOk({ campaign: toSnapshot(updated, skuPool) });
-    }
-
-    if (action === "confirm_creative") {
-      messages.push(newMessage("user", "创意方案确认 OK"));
-      messages.push(newMessage("agent", agentReplyForStage("generating", {})));
-
-      const updated = await prisma.campaign.update({
-        where: { id },
-        data: {
-          stage: "generating",
           messagesJson: JSON.stringify(messages),
         },
       });

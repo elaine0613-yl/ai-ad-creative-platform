@@ -2,7 +2,6 @@ import { buildCampaignFieldGroups } from "@/lib/campaign/field-map";
 import {
   applyCreativeTweak,
   applyRequirementTweak,
-  buildCreativeBrief,
   newMessage,
   parseRequirementFromIntent,
 } from "@/lib/campaign/parser";
@@ -23,42 +22,37 @@ export interface InteractionLogEntry {
 function buildRecommendations(requirement: RequirementBrief) {
   const template = getBusinessTemplate(requirement.templateId);
   if (!template) return [];
+  const count = Math.min(requirement.selectionCount ?? 6, 12);
   return recommendProducts(
     INTERNAL_SKUS,
     template.selectionRules,
-    `${requirement.productKeywords} ${requirement.sellingPoints}`,
-    4
+    `${requirement.productKeywords} ${requirement.sellingPoints} ${requirement.selectionStrategy ?? ""}`,
+    count
   );
 }
 
 export function buildOptimisticCampaign(
   text: string,
   materialType: MaterialType,
-  base?: CampaignSnapshot | null
+  base?: CampaignSnapshot | null,
+  agentReply?: string
 ): CampaignSnapshot {
-  if (base?.requirement && base.stage === "confirm") {
+  if (base?.requirement && (base.stage === "confirm" || base.stage === "creative_review")) {
     const requirement = applyRequirementTweak(base.requirement, text);
-    const productName =
-      base.selectedSku?.name ??
-      base.recommendations[0]?.sku.name ??
-      requirement.productKeywords;
-    const creative = applyCreativeTweak(
-      base.creative ?? buildCreativeBrief(requirement, productName),
-      text
-    );
-    return {
+    const next: CampaignSnapshot = {
       ...base,
       requirement,
-      creative,
       messages: [...base.messages, newMessage("user", text)],
     };
+    if (base.creative) {
+      next.creative = applyCreativeTweak(base.creative, text);
+    }
+    return next;
   }
 
   const requirement = parseRequirementFromIntent(text, materialType);
   requirement.materialType = materialType;
   const recommendations = buildRecommendations(requirement);
-  const topSku = recommendations[0]?.sku ?? INTERNAL_SKUS[0];
-  const creative = buildCreativeBrief(requirement, topSku.name);
 
   return {
     id: base?.id ?? "optimistic",
@@ -67,10 +61,13 @@ export function buildOptimisticCampaign(
     userIntent: text,
     requirement,
     recommendations,
-    selectedSkuId: topSku.id,
-    selectedSku: topSku,
-    creative,
-    messages: [newMessage("user", text)],
+    selectedSkuId: null,
+    selectedSku: null,
+    creative: null,
+    creativePlan: null,
+    messages: agentReply
+      ? [newMessage("user", text), newMessage("agent", agentReply)]
+      : [newMessage("user", text)],
   };
 }
 

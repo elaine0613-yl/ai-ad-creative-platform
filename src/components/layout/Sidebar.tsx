@@ -26,7 +26,7 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="flex w-60 flex-col border-r border-gray-200 bg-white">
+    <aside className="sticky top-0 flex h-dvh w-60 shrink-0 flex-col self-start overflow-hidden border-r border-gray-200 bg-white">
       <div className="flex h-16 items-center gap-2 border-b border-gray-200 px-6">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600">
           <Sparkles className="h-4 w-4 text-white" />

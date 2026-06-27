@@ -58,6 +58,24 @@ export interface RequirementBrief {
   materialType: MaterialType;
   productKeywords: string;
   sellingPoints: string;
+  /** 基础信息 */
+  taskName?: string;
+  channel?: string;
+  media?: string;
+  sizeRequirement?: string;
+  creativesPerProduct?: number;
+  visualStyle?: string;
+  /** 素材承接 */
+  landingType?: string;
+  productSelectionMethod?: string;
+  selectionCount?: number;
+  selectionStrategy?: string;
+  /** 核心投放总结（解读面板） */
+  coreSummary?: string;
+  /** 特殊约束备注 */
+  specialConstraints?: string;
+  /** 已确认选品 ID 列表 */
+  confirmedSkuIds?: string[];
   audience?: string;
   promotion?: string;
   priceRange?: string;
@@ -95,6 +113,29 @@ export interface CreativeBrief {
   visualStyle?: string;
 }
 
+/** 创意方案单模块详情 */
+export interface CreativePlanSection {
+  moduleId: string;
+  title: string;
+  rationale: string;
+  items: { label: string; value: string }[];
+}
+
+/** 创意生成完整包：含详细方案 + 全量配置回填 + Agent 标识字段 */
+export interface CreativePlanPackage {
+  brief: CreativeBrief;
+  /** 短摘要（列表/对话用） */
+  summary: string;
+  /** Agent 生成的长文创意描述（选品确认后展示） */
+  narrative: string;
+  sections: CreativePlanSection[];
+  imageConfig?: import("@/lib/create/config-types").ImageCreationConfig;
+  videoConfig?: import("@/lib/create/config-types").VideoCreationConfig;
+  agentFilledFields: string[];
+  /** 是否已通过「一键配置」写入下方面板（客户端状态，可选持久化） */
+  configApplied?: boolean;
+}
+
 export interface AgentMessage {
   id: string;
   role: "user" | "agent";
@@ -112,6 +153,7 @@ export interface CampaignSnapshot {
   selectedSkuId: string | null;
   selectedSku: SkuRecord | null;
   creative: CreativeBrief | null;
+  creativePlan: CreativePlanPackage | null;
   messages: AgentMessage[];
   materialId?: string;
   auditStatus?: string;

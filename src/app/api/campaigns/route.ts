@@ -26,11 +26,6 @@ export async function POST(req: Request) {
 
     const skuPool = await loadSkuPool();
     const recommendations = buildRecommendations(requirement, skuPool);
-    const topSku = recommendations[0]?.sku;
-    const creative = buildCreativeBrief(
-      requirement,
-      topSku?.name ?? requirement.productKeywords
-    );
 
     const messages = [
       newMessage("user", userIntent),
@@ -45,8 +40,8 @@ export async function POST(req: Request) {
         userIntent,
         requirementJson: JSON.stringify(requirement),
         recommendationsJson: JSON.stringify(recommendations),
-        selectedSkuId: topSku?.id ?? null,
-        creativeJson: JSON.stringify(creative),
+        selectedSkuId: null,
+        creativeJson: "",
         messagesJson: JSON.stringify(messages),
       },
     });

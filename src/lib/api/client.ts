@@ -83,6 +83,19 @@ export const api = {
     list: (type?: string) =>
       request<{ materials: unknown[] }>(`/api/materials${type ? `?type=${type}` : ""}`),
   },
+  materialLibrary: {
+    query: (params?: Record<string, string>) => {
+      const qs = params ? `?${new URLSearchParams(params)}` : "";
+      return request<import("@/lib/material-library/types").LibraryQueryResult>(
+        `/api/material-library${qs}`
+      );
+    },
+    save: (payload: import("@/lib/material-library/types").SaveToLibraryPayload) =>
+      request<{ asset: import("@/lib/material-library/types").LibraryAsset }>(
+        "/api/material-library",
+        { method: "POST", body: JSON.stringify(payload) }
+      ),
+  },
   campaigns: {
     create: (message: string, materialType?: "image" | "video") =>
       request<{ campaign: import("@/lib/campaign/types").CampaignSnapshot }>("/api/campaigns", {

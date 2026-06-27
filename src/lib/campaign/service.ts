@@ -7,10 +7,12 @@ import type {
   CampaignSnapshot,
   CampaignStage,
   CreativeBrief,
+  CreativePlanPackage,
   ProductRecommendation,
   RequirementBrief,
   SkuRecord,
 } from "@/lib/campaign/types";
+import { parseCreativePackage } from "@/lib/campaign/creative-plan";
 
 export async function loadSkuPool(): Promise<SkuRecord[]> {
   try {
@@ -40,7 +42,9 @@ export function toSnapshot(row: {
   const recommendations = row.recommendationsJson
     ? (JSON.parse(row.recommendationsJson) as ProductRecommendation[])
     : [];
-  const creative = row.creativeJson ? (JSON.parse(row.creativeJson) as CreativeBrief) : null;
+  const creativePkg = parseCreativePackage(row.creativeJson);
+  const creative = creativePkg?.brief ?? null;
+  const creativePlan = creativePkg;
   const messages = row.messagesJson ? (JSON.parse(row.messagesJson) as AgentMessage[]) : [];
   const selectedSku = row.selectedSkuId ? findSkuById(row.selectedSkuId, pool) ?? null : null;
 
@@ -54,6 +58,7 @@ export function toSnapshot(row: {
     selectedSkuId: row.selectedSkuId,
     selectedSku,
     creative,
+    creativePlan,
     messages,
   };
 }
@@ -64,10 +69,11 @@ export function buildRecommendations(
 ): ProductRecommendation[] {
   const template = getBusinessTemplate(requirement.templateId);
   if (!template) return [];
+  const count = Math.min(requirement.selectionCount ?? 6, 12);
   return recommendProducts(
     skuPool,
     template.selectionRules,
-    `${requirement.productKeywords} ${requirement.sellingPoints}`,
-    4
+    `${requirement.productKeywords} ${requirement.sellingPoints} ${requirement.selectionStrategy ?? ""}`,
+    count
   );
 }

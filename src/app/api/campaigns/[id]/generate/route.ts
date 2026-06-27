@@ -3,7 +3,8 @@ import { requireAuth } from "@/lib/auth/session";
 import { agentReplyForStage, newMessage } from "@/lib/campaign/parser";
 import { loadSkuPool, toSnapshot } from "@/lib/campaign/service";
 import { findSkuById } from "@/lib/mock/skus";
-import type { CreativeBrief, RequirementBrief } from "@/lib/campaign/types";
+import { parseCreativePackage } from "@/lib/campaign/creative-plan";
+import type { RequirementBrief } from "@/lib/campaign/types";
 import { prisma } from "@/lib/db/client";
 import { getImageProvider } from "@/lib/ai";
 import { getOceanEngineAdapter } from "@/lib/audit/ocean-engine";
@@ -21,7 +22,9 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     if (campaign.stage !== "generating") return jsonError("当前阶段不可生成");
 
     const requirement = JSON.parse(campaign.requirementJson) as RequirementBrief;
-    const creative = JSON.parse(campaign.creativeJson) as CreativeBrief;
+    const creativePkg = parseCreativePackage(campaign.creativeJson);
+    const creative = creativePkg?.brief;
+    if (!creative) return jsonError("创意方案不存在");
     const skuPool = await loadSkuPool();
     const sku = campaign.selectedSkuId ? findSkuById(campaign.selectedSkuId, skuPool) : null;
     const messages = JSON.parse(campaign.messagesJson || "[]");

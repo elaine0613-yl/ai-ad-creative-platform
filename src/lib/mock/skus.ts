@@ -70,6 +70,33 @@ export const INTERNAL_SKUS: SkuRecord[] = [
     promoPool: "618",
     stock: 600,
   },
+  {
+    id: "sku-008",
+    skuCode: "SKU-HOME-001",
+    name: "多功能空气炸锅 4L",
+    category: "家居百货",
+    tags: ["省钱", "捡漏", "高性价比", "热销"],
+    price: 199,
+    stock: 450,
+  },
+  {
+    id: "sku-009",
+    skuCode: "SKU-BOOK-001",
+    name: "儿童绘本套装 12册",
+    category: "母婴文教",
+    tags: ["省钱", "捡漏", "亲子"],
+    price: 59,
+    stock: 800,
+  },
+  {
+    id: "sku-010",
+    skuCode: "SKU-SHOE-001",
+    name: "九成新品牌运动鞋",
+    category: "服饰鞋包",
+    tags: ["捡漏", "二手优品", "省钱"],
+    price: 129,
+    stock: 35,
+  },
 ];
 
 export function skuRecordFromDb(row: {
