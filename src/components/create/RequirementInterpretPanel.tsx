@@ -71,11 +71,10 @@ export function RequirementInterpretPanel({
           {FIELDS.map(({ key, label, multiline }) => {
             const raw = interpretation[key];
             const value = typeof raw === "number" ? String(raw) : String(raw ?? "");
-            const isAgent = agentFilledKeys.includes(key);
             const isMissing = missingFields.includes(key);
 
             return (
-              <div key={key} className="grid grid-cols-[5.5rem_1fr_auto] items-start gap-1.5">
+              <div key={key} className="grid grid-cols-[5.5rem_1fr] items-start gap-1.5">
                 <label className="pt-1.5 text-[10px] font-medium text-gray-500">{label}</label>
                 {multiline ? (
                   <textarea
@@ -111,13 +110,6 @@ export function RequirementInterpretPanel({
                       isMissing ? "border-amber-300 bg-amber-50/50" : "border-gray-200 bg-white"
                     )}
                   />
-                )}
-                {isAgent ? (
-                  <span className="mt-1.5 rounded bg-brand-50 px-1 py-0.5 text-[9px] text-brand-600">
-                    Agent
-                  </span>
-                ) : (
-                  <span className="w-10" />
                 )}
               </div>
             );

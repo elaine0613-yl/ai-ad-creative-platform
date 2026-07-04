@@ -26,7 +26,9 @@ export function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; variant: BadgeProps["variant"] }> = {
     queued: { label: "排队中", variant: "default" },
     processing: { label: "生成中", variant: "info" },
+    auditing: { label: "审核中", variant: "warning" },
     completed: { label: "已完成", variant: "success" },
+    audit_failed: { label: "审核失败", variant: "error" },
     failed: { label: "失败", variant: "error" },
     passed: { label: "通过", variant: "success" },
     warning: { label: "警告", variant: "warning" },

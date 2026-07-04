@@ -4,7 +4,6 @@ import type { ConfigFieldDef } from "@/lib/create/config-types";
 import { getNestedValue } from "@/lib/create/agent-to-config";
 import type { MaterialType } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { Bot } from "lucide-react";
 import { MaterialAssetPicker } from "./MaterialAssetPicker";
 
 interface ConfigFieldRendererProps {
@@ -17,18 +16,6 @@ interface ConfigFieldRendererProps {
   agentFilled?: boolean;
 }
 
-function AgentBadge() {
-  return (
-    <span
-      className="inline-flex shrink-0 items-center gap-0.5 rounded-md bg-brand-50 px-1.5 py-1 text-[9px] font-medium text-brand-700"
-      title="Agent 自动填充，可修改"
-    >
-      <Bot className="h-3 w-3" />
-      Agent
-    </span>
-  );
-}
-
 export function ConfigFieldRenderer({
   field,
   values,
@@ -36,15 +23,13 @@ export function ConfigFieldRenderer({
   materialType,
   readOnly,
   highlighted,
-  agentFilled,
 }: ConfigFieldRendererProps) {
   const raw = getNestedValue(values, field.id);
   const inputClass =
     "w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50";
 
   const wrapClass = cn(
-    "grid min-w-0 grid-cols-[7.5rem_minmax(0,1fr)_auto] items-start gap-3 border-b border-gray-50 py-3 last:border-0",
-    agentFilled && "bg-brand-50/20",
+    "grid min-w-0 grid-cols-[7.5rem_minmax(0,1fr)] items-start gap-3 border-b border-gray-50 py-3 last:border-0",
     highlighted && "rounded-lg bg-amber-50/80 px-2 -mx-2 ring-1 ring-amber-200"
   );
 
@@ -54,8 +39,6 @@ export function ConfigFieldRenderer({
       {field.hint && <span className="mt-0.5 block font-normal text-gray-400">{field.hint}</span>}
     </label>
   );
-
-  const badgeCol = agentFilled ? <AgentBadge /> : <span className="w-14" />;
 
   if (readOnly) {
     const display =
@@ -69,8 +52,7 @@ export function ConfigFieldRenderer({
     return (
       <div className={wrapClass}>
         {label}
-        <p className={cn("pt-2 text-sm text-gray-900", agentFilled && "font-medium")}>{display}</p>
-        {badgeCol}
+        <p className="pt-2 text-sm text-gray-900">{display}</p>
       </div>
     );
   }
@@ -85,9 +67,8 @@ export function ConfigFieldRenderer({
             onChange={(e) => onChange(field.id, e.target.value)}
             placeholder={field.placeholder}
             rows={field.rows ?? 2}
-            className={cn(inputClass, "resize-none", agentFilled && "border-brand-200")}
+            className={cn(inputClass, "resize-none")}
           />
-          {badgeCol}
         </div>
       );
     case "select":
@@ -97,7 +78,7 @@ export function ConfigFieldRenderer({
           <select
             value={String(raw ?? "")}
             onChange={(e) => onChange(field.id, e.target.value)}
-            className={cn(inputClass, agentFilled && "border-brand-200")}
+            className={inputClass}
           >
             {field.options?.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -105,7 +86,6 @@ export function ConfigFieldRenderer({
               </option>
             ))}
           </select>
-          {badgeCol}
         </div>
       );
     case "multiselect": {
@@ -140,7 +120,6 @@ export function ConfigFieldRenderer({
               );
             })}
           </div>
-          {badgeCol}
         </div>
       );
     }
@@ -157,7 +136,6 @@ export function ConfigFieldRenderer({
             />
             <span className="text-sm text-gray-700">{raw ? "开启" : "关闭"}</span>
           </label>
-          {badgeCol}
         </div>
       );
     case "color":
@@ -177,7 +155,6 @@ export function ConfigFieldRenderer({
               className={cn(inputClass, "flex-1")}
             />
           </div>
-          {badgeCol}
         </div>
       );
     case "slider":
@@ -196,7 +173,6 @@ export function ConfigFieldRenderer({
             />
             <p className="text-xs text-gray-500">{String(raw ?? field.min ?? 0)}</p>
           </div>
-          {badgeCol}
         </div>
       );
     case "number":
@@ -208,9 +184,8 @@ export function ConfigFieldRenderer({
             value={String(raw ?? "")}
             onChange={(e) => onChange(field.id, e.target.value)}
             placeholder={field.placeholder}
-            className={cn(inputClass, agentFilled && "border-brand-200")}
+            className={inputClass}
           />
-          {badgeCol}
         </div>
       );
     case "material-picker":
@@ -225,7 +200,6 @@ export function ConfigFieldRenderer({
             materialType={materialType}
             disabled={readOnly}
           />
-          {badgeCol}
         </div>
       );
     case "file-upload":
@@ -239,7 +213,6 @@ export function ConfigFieldRenderer({
             disabled={readOnly}
             placeholder="本地上传 / 素材库"
           />
-          {badgeCol}
         </div>
       );
     default:
@@ -250,9 +223,8 @@ export function ConfigFieldRenderer({
             value={String(raw ?? "")}
             onChange={(e) => onChange(field.id, e.target.value)}
             placeholder={field.placeholder}
-            className={cn(inputClass, agentFilled && "border-brand-200")}
+            className={inputClass}
           />
-          {badgeCol}
         </div>
       );
   }

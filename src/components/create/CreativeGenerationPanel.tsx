@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/Button";
 import type { CreativePlanPackage } from "@/lib/campaign/types";
 import { cn } from "@/lib/utils";
-import { Bot, RefreshCw, Sparkles, Wand2 } from "lucide-react";
+import { RefreshCw, Sparkles, Wand2 } from "lucide-react";
 
 interface CreativeGenerationPanelProps {
   plan: CreativePlanPackage;
@@ -32,10 +32,6 @@ export function CreativeGenerationPanel({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-sm font-semibold text-gray-900">创意生成</h3>
-            <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium text-brand-700">
-              <Bot className="h-3 w-3" />
-              Agent
-            </span>
             {configApplied && (
               <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] text-green-700">
                 已写入配置

@@ -7,367 +7,478 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Tabs } from "@/components/ui/Tabs";
 import { MaterialDetailModal } from "@/components/materials/MaterialDetailModal";
 import type {
-  AssetOwnership,
-  AssetSource,
-  MaterialCatalogAsset,
-  MaterialLibraryTab,
-  MaterialTopCategory,
+  ArchiveMaterial,
+  ArchiveMaterialStatus,
+  GenerateMode,
+  ImageAspectRatio,
+  ImageSceneType,
+  ImageVisualStyle,
+  MaterialPartition,
+  VideoDurationTier,
+  VideoPace,
+  VideoType,
 } from "@/lib/material-library/catalog-types";
 import {
-  MATERIAL_TOP_CATEGORIES,
-  OWNERSHIP_LABELS,
-  SOURCE_LABELS,
-  getSubCategoryLabel,
+  AI_TAG_OPTIONS,
+  BRAND_OPTIONS,
+  CHANNEL_OPTIONS,
+  GENERATE_MODE_LABELS,
+  GENERATE_MODE_OPTIONS,
+  IMAGE_ASPECT_OPTIONS,
+  IMAGE_SCENE_OPTIONS,
+  IMAGE_STYLE_OPTIONS,
+  INDUSTRY_OPTIONS,
+  STATUS_LABELS,
+  STATUS_OPTIONS,
+  VIDEO_DURATION_OPTIONS,
+  VIDEO_PACE_OPTIONS,
+  VIDEO_TYPE_OPTIONS,
+  getChannelLabel,
+  getIndustryLabel,
 } from "@/lib/material-library/catalog-types";
-import { queryMaterialCatalog } from "@/lib/material-library/catalog-mock";
+import { ARCHIVE_MATERIALS, countByPartition, queryArchiveMaterials } from "@/lib/material-library/catalog-mock";
+import { downloadArchiveMaterial, downloadArchiveMaterialsBatch } from "@/lib/material-library/download";
 import {
   CheckSquare,
+  ChevronLeft,
+  ChevronRight,
   Download,
-  FolderPlus,
-  Grid3X3,
   Image as ImageIcon,
-  List,
   Pencil,
-  Recycle,
   Search,
-  Tag,
-  Trash2,
-  Upload,
   Video,
 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+const PAGE_SIZE = 12;
+
 export function MaterialsLibraryPage() {
-  const [tab, setTab] = useState<MaterialLibraryTab>("image");
+  const [partition, setPartition] = useState<MaterialPartition>("image");
   const [search, setSearch] = useState("");
-  const [ownership, setOwnership] = useState<AssetOwnership | "all">("all");
-  const [topCategory, setTopCategory] = useState<MaterialTopCategory | "all">("all");
-  const [subCategoryId, setSubCategoryId] = useState<string | undefined>();
-  const [source, setSource] = useState<AssetSource | "all">("all");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [generateMode, setGenerateMode] = useState<GenerateMode | "all">("all");
+  const [channel, setChannel] = useState("all");
+  const [brand, setBrand] = useState("all");
+  const [industry, setIndustry] = useState("all");
+  const [status, setStatus] = useState<ArchiveMaterialStatus | "all">("all");
+  const [aiTag, setAiTag] = useState("all");
+  const [taskId, setTaskId] = useState("");
+  const [datePreset, setDatePreset] = useState<"all" | "1d" | "7d" | "30d">("all");
+  const [aspectRatio, setAspectRatio] = useState<ImageAspectRatio | "all">("all");
+  const [visualStyle, setVisualStyle] = useState<ImageVisualStyle | "all">("all");
+  const [sceneType, setSceneType] = useState<ImageSceneType | "all">("all");
+  const [durationTier, setDurationTier] = useState<VideoDurationTier | "all">("all");
+  const [pace, setPace] = useState<VideoPace | "all">("all");
+  const [hasSubtitle, setHasSubtitle] = useState<"all" | "yes" | "no">("all");
+  const [videoType, setVideoType] = useState<VideoType | "all">("all");
+  const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<string[]>([]);
-  const [detailAsset, setDetailAsset] = useState<MaterialCatalogAsset | null>(null);
-  const [showRecycle, setShowRecycle] = useState(false);
+  const [includeTraceOnExport, setIncludeTraceOnExport] = useState(false);
+  const [detailAsset, setDetailAsset] = useState<ArchiveMaterial | null>(null);
+  const [materials, setMaterials] = useState(ARCHIVE_MATERIALS);
 
-  const visibleGroups = useMemo(
-    () =>
-      MATERIAL_TOP_CATEGORIES.filter((g) => {
-        if (tab === "image") return g.id !== "video-pipeline";
-        return g.id !== "image-pipeline";
-      }),
-    [tab]
-  );
+  const filtered = useMemo(() => {
+    const ids = new Set(materials.map((m) => m.id));
+    return queryArchiveMaterials({
+      partition,
+      search,
+      generateMode,
+      channel,
+      brand,
+      industry,
+      status,
+      aiTag,
+      taskId,
+      datePreset,
+      aspectRatio,
+      visualStyle,
+      sceneType,
+      durationTier,
+      pace,
+      hasSubtitle,
+      videoType,
+    }).filter((m) => ids.has(m.id));
+  }, [
+    materials,
+    partition,
+    search,
+    generateMode,
+    channel,
+    brand,
+    industry,
+    status,
+    aiTag,
+    taskId,
+    datePreset,
+    aspectRatio,
+    visualStyle,
+    sceneType,
+    durationTier,
+    pace,
+    hasSubtitle,
+    videoType,
+  ]);
 
-  const assets = useMemo(
-    () =>
-      queryMaterialCatalog({
-        tab,
-        search,
-        ownership,
-        topCategory,
-        subCategoryId,
-        source,
-        dateFrom: dateFrom || undefined,
-        dateTo: dateTo || undefined,
-      }),
-    [tab, search, ownership, topCategory, subCategoryId, source, dateFrom, dateTo]
-  );
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
   };
 
-  const toggleSelectAll = () => {
-    if (selected.length === assets.length) setSelected([]);
-    else setSelected(assets.map((a) => a.id));
+  const handlePartitionChange = (id: string) => {
+    setPartition(id as MaterialPartition);
+    setPage(1);
+    setSelected([]);
+    setAspectRatio("all");
+    setVisualStyle("all");
+    setSceneType("all");
+    setDurationTier("all");
+    setPace("all");
+    setHasSubtitle("all");
+    setVideoType("all");
   };
 
-  const createHref = tab === "video" ? "/video/create" : "/image/create";
+  const handleRename = (asset: ArchiveMaterial) => {
+    const next = window.prompt("重命名素材", asset.name);
+    if (!next?.trim() || next === asset.name) return;
+    setMaterials((prev) =>
+      prev.map((m) =>
+        m.id === asset.id
+          ? {
+              ...m,
+              name: next.trim(),
+              operationRecords: [
+                ...m.operationRecords,
+                {
+                  action: `重命名为「${next.trim()}」`,
+                  operator: "当前用户",
+                  at: new Date().toISOString().slice(0, 16).replace("T", " "),
+                },
+              ],
+            }
+          : m
+      )
+    );
+    if (detailAsset?.id === asset.id) {
+      setDetailAsset((prev) => (prev ? { ...prev, name: next.trim() } : prev));
+    }
+  };
+
+  const selectedMaterials = materials.filter((m) => selected.includes(m.id));
+
+  const handleBatchDownload = () => {
+    downloadArchiveMaterialsBatch(selectedMaterials, includeTraceOnExport);
+    setMaterials((prev) =>
+      prev.map((m) =>
+        selected.includes(m.id)
+          ? {
+              ...m,
+              exportRecords: [
+                ...m.exportRecords,
+                {
+                  action: includeTraceOnExport ? "批量导出（含溯源）" : "批量导出",
+                  operator: "当前用户",
+                  at: new Date().toISOString().slice(0, 16).replace("T", " "),
+                },
+              ],
+            }
+          : m
+      )
+    );
+  };
+
+  const createHref = partition === "video" ? "/video/create" : "/image/create";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <PageHeader
         title="素材库"
-        description="统一管理品牌、图片/视频链路、策略模板与平台预置资产；创作流程各节点可一键调取回填"
         hideGlobalSearch
         toolbar={
           <Tabs
             tabs={[
-              { id: "image", label: "图片类资产", badge: String(queryMaterialCatalog({ tab: "image" }).length) },
-              { id: "video", label: "视频类资产", badge: String(queryMaterialCatalog({ tab: "video" }).length) },
+              { id: "image", label: "图片素材库", badge: String(countByPartition("image")) },
+              { id: "video", label: "视频素材库", badge: String(countByPartition("video")) },
             ]}
-            activeTab={tab}
-            onChange={(id) => {
-              setTab(id as MaterialLibraryTab);
-              setTopCategory("all");
-              setSubCategoryId(undefined);
-              setSelected([]);
-            }}
+            activeTab={partition}
+            onChange={handlePartitionChange}
           />
         }
       />
 
-      {/* 全局筛选控制区 */}
+      {/* 通用筛选 */}
       <div className="shrink-0 border-b border-gray-200 bg-white px-6 py-3">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-end">
-          <div className="relative min-w-0 flex-1 xl:max-w-xs">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-end">
+            <div className="relative min-w-0 flex-1 xl:max-w-xs">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                placeholder="素材名称、任务ID、商品、卖点…"
+                className="pl-9"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
             <Input
-              placeholder="搜索名称、标签、类目、渠道..."
-              className="pl-9"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              placeholder="产出任务 ID"
+              className="xl:w-36"
+              value={taskId}
+              onChange={(e) => {
+                setTaskId(e.target.value);
+                setPage(1);
+              }}
             />
-          </div>
-          <select
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
-            value={ownership}
-            onChange={(e) => setOwnership(e.target.value as AssetOwnership | "all")}
-          >
-            <option value="all">全部归属</option>
-            {(Object.keys(OWNERSHIP_LABELS) as AssetOwnership[]).map((k) => (
-              <option key={k} value={k}>
-                {OWNERSHIP_LABELS[k]}
-              </option>
-            ))}
-          </select>
-          <select
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
-            value={topCategory}
-            onChange={(e) => {
-              setTopCategory(e.target.value as MaterialTopCategory | "all");
-              setSubCategoryId(undefined);
-            }}
-          >
-            <option value="all">全部分类</option>
-            {visibleGroups.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.label}
-              </option>
-            ))}
-          </select>
-          <select
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
-            value={source}
-            onChange={(e) => setSource(e.target.value as AssetSource | "all")}
-          >
-            <option value="all">全部来源</option>
-            {(Object.keys(SOURCE_LABELS) as AssetSource[]).map((k) => (
-              <option key={k} value={k}>
-                {SOURCE_LABELS[k]}
-              </option>
-            ))}
-          </select>
-          <Input type="date" className="w-36" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-          <span className="hidden text-gray-400 sm:inline">—</span>
-          <Input type="date" className="w-36" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-          <div className="flex rounded-lg border border-gray-200 p-0.5">
-            <button
-              type="button"
-              onClick={() => setViewMode("grid")}
-              className={`rounded-md p-2 ${viewMode === "grid" ? "bg-gray-100 text-gray-900" : "text-gray-400"}`}
-              aria-label="卡片视图"
+            <select
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+              value={generateMode}
+              onChange={(e) => setGenerateMode(e.target.value as GenerateMode | "all")}
             >
-              <Grid3X3 className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("list")}
-              className={`rounded-md p-2 ${viewMode === "list" ? "bg-gray-100 text-gray-900" : "text-gray-400"}`}
-              aria-label="列表视图"
-            >
-              <List className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex min-h-0 flex-1 overflow-hidden">
-        {/* 分类侧栏 */}
-        <aside className="hidden w-56 shrink-0 overflow-y-auto border-r border-gray-200 bg-gray-50/50 p-4 lg:block">
-          <button
-            type="button"
-            onClick={() => {
-              setTopCategory("all");
-              setSubCategoryId(undefined);
-            }}
-            className={`mb-3 w-full rounded-lg px-3 py-2 text-left text-sm font-medium ${
-              !subCategoryId && topCategory === "all" ? "bg-brand-50 text-brand-700" : "text-gray-600 hover:bg-gray-100"
-            }`}
-          >
-            全部资产
-          </button>
-          {visibleGroups.map((group) => (
-            <div key={group.id} className="mb-4">
-              <p className="mb-1 px-2 text-xs font-semibold uppercase tracking-wide text-gray-400">{group.label}</p>
-              {group.subCategories
-                .filter((s) => s.tabs.includes(tab))
-                .map((sub) => (
-                  <button
-                    key={sub.id}
-                    type="button"
-                    onClick={() => {
-                      setTopCategory(group.id);
-                      setSubCategoryId(sub.id);
-                    }}
-                    className={`mb-0.5 w-full rounded-lg px-3 py-1.5 text-left text-sm ${
-                      subCategoryId === sub.id
-                        ? "bg-brand-50 font-medium text-brand-700"
-                        : "text-gray-600 hover:bg-gray-100"
-                    }`}
-                  >
-                    {sub.label}
-                  </button>
-                ))}
-            </div>
-          ))}
-        </aside>
-
-        {/* 资产列表区 */}
-        <div className="min-h-0 flex-1 overflow-y-auto p-6 pb-28">
-          {showRecycle ? (
-            <EmptyState
-              icon={<Recycle className="h-12 w-12" />}
-              title="回收站"
-              description="已移入回收站的素材将在此保留 30 天，之后自动清理"
-            />
-          ) : assets.length === 0 ? (
-            <EmptyState
-              icon={tab === "image" ? <ImageIcon className="h-12 w-12" /> : <Video className="h-12 w-12" />}
-              title="暂无匹配的素材"
-              description="调整筛选条件，或使用底部批量上传添加新素材"
-            />
-          ) : viewMode === "grid" ? (
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-              {assets.map((asset) => (
-                <AssetCard
-                  key={asset.id}
-                  asset={asset}
-                  selected={selected.includes(asset.id)}
-                  onToggleSelect={() => toggleSelect(asset.id)}
-                  onOpen={() => setDetailAsset(asset)}
-                  createHref={createHref}
-                />
+              {GENERATE_MODE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
               ))}
-            </div>
-          ) : (
-            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-              <table className="w-full text-sm">
-                <thead className="border-b border-gray-100 bg-gray-50 text-left text-xs text-gray-500">
-                  <tr>
-                    <th className="p-3 w-10">
-                      <input
-                        type="checkbox"
-                        checked={selected.length === assets.length && assets.length > 0}
-                        onChange={toggleSelectAll}
-                      />
-                    </th>
-                    <th className="p-3">名称</th>
-                    <th className="p-3 hidden md:table-cell">分类</th>
-                    <th className="p-3 hidden lg:table-cell">归属</th>
-                    <th className="p-3 hidden lg:table-cell">创建时间</th>
-                    <th className="p-3">操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {assets.map((asset) => (
-                    <tr key={asset.id} className="border-b border-gray-50 hover:bg-gray-50/50">
-                      <td className="p-3">
-                        <input
-                          type="checkbox"
-                          checked={selected.includes(asset.id)}
-                          onChange={() => toggleSelect(asset.id)}
-                        />
-                      </td>
-                      <td className="p-3">
-                        <button
-                          type="button"
-                          className="flex items-center gap-3 text-left"
-                          onClick={() => setDetailAsset(asset)}
-                        >
-                          <div
-                            className="h-10 w-10 shrink-0 rounded-lg"
-                            style={{ backgroundColor: asset.previewColor ?? "#E5E7EB" }}
-                          />
-                          <span className="font-medium text-gray-900">{asset.name}</span>
-                        </button>
-                      </td>
-                      <td className="p-3 hidden md:table-cell text-gray-500">
-                        {getSubCategoryLabel(asset.subCategoryId)}
-                      </td>
-                      <td className="p-3 hidden lg:table-cell text-gray-500">
-                        {OWNERSHIP_LABELS[asset.ownership]}
-                      </td>
-                      <td className="p-3 hidden lg:table-cell text-gray-500">{asset.createdAt}</td>
-                      <td className="p-3">
-                        <div className="flex gap-1">
-                          <Link href={`${createHref}?materialId=${asset.id}`}>
-                            <Button variant="ghost" size="sm">
-                              选用
-                            </Button>
-                          </Link>
-                          {!asset.readonly && (
-                            <Button variant="ghost" size="sm">
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
+            </select>
+            <select
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+              value={channel}
+              onChange={(e) => setChannel(e.target.value)}
+            >
+              {CHANNEL_OPTIONS.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+            <select
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+              value={brand}
+              onChange={(e) => setBrand(e.target.value)}
+            >
+              {BRAND_OPTIONS.map((b) => (
+                <option key={b.value} value={b.value}>
+                  {b.label}
+                </option>
+              ))}
+            </select>
+            <select
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+              value={industry}
+              onChange={(e) => setIndustry(e.target.value)}
+            >
+              {INDUSTRY_OPTIONS.map((i) => (
+                <option key={i.value} value={i.value}>
+                  {i.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <select
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+              value={datePreset}
+              onChange={(e) => setDatePreset(e.target.value as typeof datePreset)}
+            >
+              <option value="all">全部时间</option>
+              <option value="1d">近 1 天</option>
+              <option value="7d">近 7 天</option>
+              <option value="30d">近 30 天</option>
+            </select>
+            <select
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+              value={status}
+              onChange={(e) => setStatus(e.target.value as ArchiveMaterialStatus | "all")}
+            >
+              {STATUS_OPTIONS.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+            <select
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+              value={aiTag}
+              onChange={(e) => setAiTag(e.target.value)}
+            >
+              {AI_TAG_OPTIONS.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+            {partition === "image" ? (
+              <>
+                <select
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+                  value={aspectRatio}
+                  onChange={(e) => setAspectRatio(e.target.value as ImageAspectRatio | "all")}
+                >
+                  {IMAGE_ASPECT_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                </select>
+                <select
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+                  value={visualStyle}
+                  onChange={(e) => setVisualStyle(e.target.value as ImageVisualStyle | "all")}
+                >
+                  {IMAGE_STYLE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+                  value={sceneType}
+                  onChange={(e) => setSceneType(e.target.value as ImageSceneType | "all")}
+                >
+                  {IMAGE_SCENE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </>
+            ) : (
+              <>
+                <select
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+                  value={durationTier}
+                  onChange={(e) => setDurationTier(e.target.value as VideoDurationTier | "all")}
+                >
+                  {VIDEO_DURATION_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+                  value={pace}
+                  onChange={(e) => setPace(e.target.value as VideoPace | "all")}
+                >
+                  {VIDEO_PACE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+                  value={hasSubtitle}
+                  onChange={(e) => setHasSubtitle(e.target.value as typeof hasSubtitle)}
+                >
+                  <option value="all">字幕配置</option>
+                  <option value="yes">带字幕</option>
+                  <option value="no">无字幕</option>
+                </select>
+                <select
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+                  value={videoType}
+                  onChange={(e) => setVideoType(e.target.value as VideoType | "all")}
+                >
+                  {VIDEO_TYPE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
+            <span className="self-center text-xs text-gray-400">共 {filtered.length} 条成品素材</span>
+          </div>
         </div>
       </div>
 
-      {/* 底部批量操作栏 */}
+      {/* 卡片列表 */}
+      <div className="min-h-0 flex-1 overflow-y-auto p-6 pb-36">
+        {paged.length === 0 ? (
+          <EmptyState
+            icon={partition === "image" ? <ImageIcon className="h-12 w-12" /> : <Video className="h-12 w-12" />}
+            title="暂无匹配的成品素材"
+            description="仅展示任务中心审核通过的成品；未通过审核或生成失败的素材请前往任务中心查看"
+            action={
+              <Link href="/tasks">
+                <Button variant="outline" size="sm">
+                  前往任务中心
+                </Button>
+              </Link>
+            }
+          />
+        ) : (
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+            {paged.map((asset) => (
+              <MaterialCard
+                key={asset.id}
+                asset={asset}
+                selected={selected.includes(asset.id)}
+                onToggleSelect={() => toggleSelect(asset.id)}
+                onOpen={() => setDetailAsset(asset)}
+                onRename={() => handleRename(asset)}
+                onDownload={() => downloadArchiveMaterial(asset, includeTraceOnExport)}
+                createHref={createHref}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* 分页 */}
+        {filtered.length > 0 && (
+          <div className="mt-6 flex items-center justify-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => p - 1)}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              上一页
+            </Button>
+            <span className="text-sm text-gray-500">
+              第 {page} / {totalPages} 页
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              下一页
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* 底部批量操作 */}
       <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-gray-200 bg-white/95 px-6 py-3 backdrop-blur lg:left-60">
         <div className="mx-auto flex max-w-screen-2xl flex-wrap items-center gap-2">
-          {selected.length > 0 && (
-            <span className="mr-2 text-sm text-gray-500">已选 {selected.length} 项</span>
-          )}
-          <Button variant="outline" size="sm">
-            <Upload className="h-3.5 w-3.5" />
-            批量上传
-          </Button>
-          <Button variant="outline" size="sm">
-            <FolderPlus className="h-3.5 w-3.5" />
-            新建文件夹
-          </Button>
-          <Button variant="outline" size="sm" disabled={selected.length === 0}>
-            <Tag className="h-3.5 w-3.5" />
-            批量打标签
-          </Button>
-          <Button variant="outline" size="sm" disabled={selected.length === 0}>
-            批量移动分类
-          </Button>
-          <Button variant="outline" size="sm" disabled={selected.length === 0}>
+          {selected.length > 0 && <span className="mr-2 text-sm text-gray-500">已选 {selected.length} 项</span>}
+          <label className="mr-2 flex items-center gap-1.5 text-xs text-gray-500">
+            <input
+              type="checkbox"
+              checked={includeTraceOnExport}
+              onChange={(e) => setIncludeTraceOnExport(e.target.checked)}
+            />
+            导出附带溯源参数
+          </label>
+          <Button variant="outline" size="sm" disabled={selected.length === 0} onClick={handleBatchDownload}>
             <Download className="h-3.5 w-3.5" />
             批量导出
           </Button>
-          <Button variant="outline" size="sm" disabled={selected.length === 0}>
-            <Recycle className="h-3.5 w-3.5" />
-            移入回收站
-          </Button>
-          <Button variant="danger" size="sm" disabled={selected.length === 0}>
-            <Trash2 className="h-3.5 w-3.5" />
-            批量删除
-          </Button>
           <div className="flex-1" />
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowRecycle(!showRecycle)}
-            className={showRecycle ? "text-brand-600" : ""}
-          >
-            <Recycle className="h-3.5 w-3.5" />
-            回收站
-          </Button>
+          <Link href={createHref}>
+            <Button variant="ghost" size="sm">
+              基于素材二次创作
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -375,24 +486,55 @@ export function MaterialsLibraryPage() {
         asset={detailAsset}
         open={!!detailAsset}
         onClose={() => setDetailAsset(null)}
+        onRename={handleRename}
+        includeTraceOnExport={includeTraceOnExport}
+        onDownload={(asset, withTrace) => {
+          downloadArchiveMaterial(asset, withTrace);
+          setMaterials((prev) =>
+            prev.map((m) =>
+              m.id === asset.id
+                ? {
+                    ...m,
+                    exportRecords: [
+                      ...m.exportRecords,
+                      {
+                        action: withTrace ? "单素材下载（含溯源）" : "单素材下载",
+                        operator: "当前用户",
+                        at: new Date().toISOString().slice(0, 16).replace("T", " "),
+                      },
+                    ],
+                  }
+                : m
+            )
+          );
+        }}
       />
     </div>
   );
 }
 
-function AssetCard({
+function MaterialCard({
   asset,
   selected,
   onToggleSelect,
   onOpen,
+  onRename,
+  onDownload,
   createHref,
 }: {
-  asset: MaterialCatalogAsset;
+  asset: ArchiveMaterial;
   selected: boolean;
   onToggleSelect: () => void;
   onOpen: () => void;
+  onRename: () => void;
+  onDownload: () => void;
   createHref: string;
 }) {
+  const sizeLabel =
+    asset.partition === "video"
+      ? `${asset.durationSec ?? asset.durationTier}s`
+      : asset.aspectRatio ?? `${asset.width}×${asset.height}`;
+
   return (
     <div
       className={`group relative overflow-hidden rounded-xl border bg-white transition-shadow hover:shadow-md ${
@@ -411,42 +553,55 @@ function AssetCard({
           <CheckSquare className="h-4 w-4" />
         </button>
       </div>
-      {asset.readonly && (
-        <span className="absolute right-2 top-2 z-10 rounded bg-gray-900/60 px-1.5 py-0.5 text-[10px] text-white">
-          只读
+      {asset.status !== "normal" && (
+        <span
+          className={`absolute right-2 top-2 z-10 rounded px-1.5 py-0.5 text-[10px] text-white ${
+            asset.status === "violation" ? "bg-red-500" : "bg-amber-500"
+          }`}
+        >
+          {STATUS_LABELS[asset.status]}
         </span>
       )}
       <button type="button" className="block w-full text-left" onClick={onOpen}>
         <div
-          className="flex aspect-[4/3] items-center justify-center"
-          style={{ backgroundColor: asset.previewColor ?? "#E5E7EB" }}
+          className={`flex items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100 ${
+            asset.partition === "video" ? "aspect-[9/16]" : "aspect-square"
+          }`}
+          style={{ backgroundColor: asset.previewColor }}
         >
-          {asset.durationSec ? (
-            <span className="rounded bg-black/50 px-2 py-0.5 text-xs text-white">{asset.durationSec}s</span>
-          ) : null}
+          {asset.partition === "video" ? (
+            <Video className="h-8 w-8 text-white/70" />
+          ) : (
+            <ImageIcon className="h-8 w-8 text-white/70" />
+          )}
         </div>
         <div className="p-3">
           <p className="truncate text-sm font-medium text-gray-900">{asset.name}</p>
-          <p className="mt-0.5 truncate text-xs text-gray-500">{getSubCategoryLabel(asset.subCategoryId)}</p>
-          <p className="mt-1 text-[10px] text-gray-400">{asset.createdAt}</p>
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            <span className="rounded bg-brand-50 px-1.5 py-0.5 text-[10px] text-brand-700">
+              {GENERATE_MODE_LABELS[asset.generateMode]}
+            </span>
+            <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] text-blue-600">
+              {getChannelLabel(asset.channel)}
+            </span>
+            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600">{sizeLabel}</span>
+          </div>
+          <p className="mt-1 truncate text-xs text-gray-500">{asset.productName}</p>
+          <p className="mt-0.5 text-[10px] text-gray-400">{asset.createdAt}</p>
         </div>
       </button>
-      <div className="flex border-t border-gray-100 px-2 py-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+      <div className="flex border-t border-gray-100 px-1 py-1 opacity-0 transition-opacity group-hover:opacity-100">
+        <Button variant="ghost" size="sm" className="flex-1 text-xs" onClick={onDownload}>
+          <Download className="h-3 w-3" />
+        </Button>
+        <Button variant="ghost" size="sm" className="text-xs" onClick={onRename}>
+          <Pencil className="h-3 w-3" />
+        </Button>
         <Link href={`${createHref}?materialId=${asset.id}`} className="flex-1">
           <Button variant="ghost" size="sm" className="w-full text-xs">
-            选用
+            复用
           </Button>
         </Link>
-        {!asset.readonly && (
-          <>
-            <Button variant="ghost" size="sm" className="text-xs">
-              <Pencil className="h-3 w-3" />
-            </Button>
-            <Button variant="ghost" size="sm" className="text-xs text-red-500">
-              <Trash2 className="h-3 w-3" />
-            </Button>
-          </>
-        )}
       </div>
     </div>
   );

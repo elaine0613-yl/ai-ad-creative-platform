@@ -1,35 +1,63 @@
-/** 知识库一级分类（固定 6 类） */
-export type KnowledgeTopCategory =
-  | "brand-vi"
-  | "prompt"
+/** 知识库一级分区（与创作页图片/视频对齐） */
+export type KnowledgePartition = "image" | "video";
+
+/** 视频知识库 · 10 大子库 */
+export type VideoSubLibrary =
   | "channel-rules"
-  | "industry-strategy"
-  | "structure-paradigm"
-  | "review-insights";
+  | "digital-avatar"
+  | "brand-assets"
+  | "risk-control"
+  | "bgm"
+  | "transitions"
+  | "voice"
+  | "subtitle-templates"
+  | "lens-scripts"
+  | "copy-scripts";
 
-export type KnowledgeVisibility = "private" | "team" | "public";
-export type KnowledgeStatus = "active" | "disabled";
-export type KnowledgePriority = "high" | "medium" | "low";
+/** 图片知识库 · 10 大子库 */
+export type ImageSubLibrary =
+  | "channel-rules"
+  | "brand-assets"
+  | "risk-control"
+  | "product-assets"
+  | "visual-styles"
+  | "composition-templates"
+  | "copy-layout"
+  | "decorations"
+  | "scene-assets"
+  | "selling-copy";
 
-export interface KnowledgeCategoryGroup {
-  id: KnowledgeTopCategory;
+export type KnowledgeSubLibrary = VideoSubLibrary | ImageSubLibrary;
+
+export type KnowledgeStatus = "active" | "disabled" | "pending" | "expired";
+
+export type QualityTag =
+  | "hit-saved"
+  | "official-recommend"
+  | "high-conversion"
+  | "newly-added";
+
+export interface KnowledgeSubLibraryGroup {
+  id: KnowledgeSubLibrary;
   label: string;
   description: string;
-  subTopics: { id: string; label: string }[];
 }
 
 export interface KnowledgeEntry {
   id: string;
+  /** 运营可见知识库 ID */
+  knowledgeId: string;
+  partition: KnowledgePartition;
+  subLibrary: KnowledgeSubLibrary;
   title: string;
-  topCategory: KnowledgeTopCategory;
-  subTopicId?: string;
   channels: string[];
+  brand: string;
   industries: string[];
-  priority: KnowledgePriority;
+  qualityTags: QualityTag[];
   summary: string;
   content: string;
+  remark?: string;
   tags: string[];
-  visibility: KnowledgeVisibility;
   status: KnowledgeStatus;
   createdBy: string;
   createdAt: string;
@@ -38,106 +66,125 @@ export interface KnowledgeEntry {
   version: number;
 }
 
-export const KNOWLEDGE_TOP_CATEGORIES: KnowledgeCategoryGroup[] = [
-  {
-    id: "brand-vi",
-    label: "品牌 VI 规范约束",
-    description: "LOGO、色彩、文案口径与画面约束",
-    subTopics: [
-      { id: "logo-rules", label: "LOGO 使用约束" },
-      { id: "color-rules", label: "品牌色彩规范" },
-      { id: "copy-tone", label: "品牌文案口径" },
-      { id: "visual-constraints", label: "品牌画面约束" },
-    ],
-  },
-  {
-    id: "prompt",
-    label: "AI 生成提示词",
-    description: "正向描述、风格句式、负面规避与券专项 Prompt",
-    subTopics: [
-      { id: "industry-prompt", label: "分行业正向描述" },
-      { id: "style-prompt", label: "视觉风格句式" },
-      { id: "negative-prompt", label: "负面规避词库" },
-      { id: "coupon-prompt", label: "优惠券专项 Prompt" },
-    ],
-  },
-  {
-    id: "channel-rules",
-    label: "投放渠道规则",
-    description: "平台硬性规范、广告合规与渠道偏好",
-    subTopics: [
-      { id: "platform-spec", label: "平台硬性规范" },
-      { id: "compliance", label: "广告合规规则" },
-      { id: "channel-preference", label: "渠道素材偏好" },
-    ],
-  },
-  {
-    id: "industry-strategy",
-    label: "行业 & 活动运营策略",
-    description: "品类卖点、券活动打法与定价表达",
-    subTopics: [
-      { id: "selling-points", label: "品类卖点话术" },
-      { id: "coupon-tactics", label: "优惠券活动打法" },
-      { id: "pricing-copy", label: "商品定价表达规范" },
-    ],
-  },
-  {
-    id: "structure-paradigm",
-    label: "素材结构范式",
-    description: "外投图构图、15s 脚本与 CTA 规范",
-    subTopics: [
-      { id: "image-structure", label: "外投图片构图规范" },
-      { id: "video-script", label: "15s 四段式脚本" },
-      { id: "cta-design", label: "转化引导与 CTA 规范" },
-    ],
-  },
-  {
-    id: "review-insights",
-    label: "投放效果复盘",
-    description: "高点击经验、踩坑记录与 A/B 结论",
-    subTopics: [
-      { id: "success-cases", label: "高点击成功经验" },
-      { id: "failure-cases", label: "低效素材踩坑" },
-      { id: "ab-conclusions", label: "A/B 测试结论" },
-    ],
-  },
+export interface KnowledgeQuery {
+  partition: KnowledgePartition;
+  search?: string;
+  knowledgeId?: string;
+  subLibrary?: KnowledgeSubLibrary | "all";
+  channel?: string;
+  brand?: string;
+  industry?: string;
+  status?: KnowledgeStatus | "all";
+  qualityTag?: QualityTag | "all";
+  datePreset?: "all" | "7d" | "30d";
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export const VIDEO_SUB_LIBRARIES: KnowledgeSubLibraryGroup[] = [
+  { id: "channel-rules", label: "频道规则库", description: "各投放频道创作规则、内容偏好与禁忌" },
+  { id: "digital-avatar", label: "数字人资源库", description: "优质数字人形象、人设与出镜节奏" },
+  { id: "brand-assets", label: "品牌资产库", description: "LOGO、配色、字体、Slogan 与口播规范" },
+  { id: "risk-control", label: "风险控制库", description: "禁用话术、违规画面与审核驳回案例" },
+  { id: "bgm", label: "BGM 素材库", description: "高转化背景音乐，节奏与场景标签" },
+  { id: "transitions", label: "转场特效库", description: "转场类型与镜头节奏适配方案" },
+  { id: "voice", label: "音色配音库", description: "带货/种草场景 AI 音色沉淀" },
+  { id: "subtitle-templates", label: "字幕模板库", description: "字幕样式、排版与文案框架" },
+  { id: "lens-scripts", label: "视频镜头脚本库", description: "爆款镜头结构、运镜与剧情脚本" },
+  { id: "copy-scripts", label: "视频文案话术库", description: "口播、卖点、CTA 高转化话术" },
+];
+
+export const IMAGE_SUB_LIBRARIES: KnowledgeSubLibraryGroup[] = [
+  { id: "channel-rules", label: "频道规则库", description: "各渠道图片高起量特征与审核规则" },
+  { id: "brand-assets", label: "品牌资产库", description: "LOGO 位置、配色、装饰与禁用样式" },
+  { id: "risk-control", label: "风险控制库", description: "违规构图、文字与低质图特征" },
+  { id: "product-assets", label: "商品素材库", description: "高清商品底图、场景图与细节图" },
+  { id: "visual-styles", label: "视觉风格库", description: "促销/种草/极简等爆款视觉风格" },
+  { id: "composition-templates", label: "构图模板库", description: "高转化海报构图结构模板" },
+  { id: "copy-layout", label: "文案排版库", description: "字体组合、字号层级与卖点排版" },
+  { id: "decorations", label: "装饰元素库", description: "贴纸、边框、氛围与营销标签" },
+  { id: "scene-assets", label: "场景素材库", description: "真实/纯色/质感背景场景素材" },
+  { id: "selling-copy", label: "图片卖点话术库", description: "短卖点、标题与 CTA 标签文案" },
 ];
 
 export const CHANNEL_OPTIONS = [
   { value: "all", label: "全渠道通用" },
   { value: "douyin", label: "抖音" },
-  { value: "channels", label: "视频号" },
+  { value: "kuaishou", label: "快手" },
   { value: "xiaohongshu", label: "小红书" },
+  { value: "moments", label: "朋友圈" },
+  { value: "channels", label: "视频号" },
+];
+
+export const BRAND_OPTIONS = [
+  { value: "all", label: "全部品牌" },
+  { value: "shenquan", label: "省钱神券" },
+  { value: "platform", label: "平台通用" },
 ];
 
 export const INDUSTRY_OPTIONS = [
-  { value: "all", label: "全行业通用" },
-  { value: "3c", label: "3C" },
-  { value: "beauty", label: "美妆" },
-  { value: "food", label: "食品" },
-  { value: "home", label: "家居" },
+  { value: "all", label: "全类目通用" },
+  { value: "3c", label: "3C 数码" },
+  { value: "beauty", label: "美妆护肤" },
+  { value: "food", label: "食品生鲜" },
+  { value: "home", label: "家居日用" },
+  { value: "fashion", label: "服饰鞋包" },
 ];
 
-export const VISIBILITY_LABELS: Record<KnowledgeVisibility, string> = {
-  private: "个人私有",
-  team: "团队共享",
-  public: "平台公共",
+export const STATUS_OPTIONS: { value: KnowledgeStatus | "all"; label: string }[] = [
+  { value: "all", label: "全部状态" },
+  { value: "active", label: "启用" },
+  { value: "disabled", label: "停用" },
+  { value: "pending", label: "待审核" },
+  { value: "expired", label: "已过期" },
+];
+
+export const QUALITY_TAG_OPTIONS: { value: QualityTag | "all"; label: string }[] = [
+  { value: "all", label: "全部标签" },
+  { value: "hit-saved", label: "爆款沉淀" },
+  { value: "official-recommend", label: "官方推荐" },
+  { value: "high-conversion", label: "高转化" },
+  { value: "newly-added", label: "新收录" },
+];
+
+export const STATUS_LABELS: Record<KnowledgeStatus, string> = {
+  active: "启用",
+  disabled: "停用",
+  pending: "待审核",
+  expired: "已过期",
 };
 
-export const PRIORITY_LABELS: Record<KnowledgePriority, string> = {
-  high: "高",
-  medium: "中",
-  low: "低",
+export const QUALITY_TAG_LABELS: Record<QualityTag, string> = {
+  "hit-saved": "爆款沉淀",
+  "official-recommend": "官方推荐",
+  "high-conversion": "高转化",
+  "newly-added": "新收录",
 };
 
-export function getKnowledgeCategoryLabel(id: KnowledgeTopCategory): string {
-  return KNOWLEDGE_TOP_CATEGORIES.find((g) => g.id === id)?.label ?? id;
+export function getSubLibraries(partition: KnowledgePartition): KnowledgeSubLibraryGroup[] {
+  return partition === "video" ? VIDEO_SUB_LIBRARIES : IMAGE_SUB_LIBRARIES;
+}
+
+export function getSubLibraryLabel(partition: KnowledgePartition, id: KnowledgeSubLibrary): string {
+  return getSubLibraries(partition).find((g) => g.id === id)?.label ?? id;
 }
 
 export function getChannelLabel(value: string): string {
   return CHANNEL_OPTIONS.find((c) => c.value === value)?.label ?? value;
 }
 
+export function getBrandLabel(value: string): string {
+  return BRAND_OPTIONS.find((b) => b.value === value)?.label ?? value;
+}
+
 export function getIndustryLabel(value: string): string {
   return INDUSTRY_OPTIONS.find((i) => i.value === value)?.label ?? value;
+}
+
+export function isSubLibraryForPartition(
+  partition: KnowledgePartition,
+  subLibrary: KnowledgeSubLibrary
+): boolean {
+  const libs = getSubLibraries(partition);
+  return libs.some((g) => g.id === subLibrary);
 }

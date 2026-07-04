@@ -2,6 +2,8 @@ import { jsonOk, handleApiError, jsonError } from "@/lib/api/response";
 import { requireAuth } from "@/lib/auth/session";
 import { applyFieldUpdates } from "@/lib/campaign/field-map";
 import { buildFullCreativePlan, parseCreativePackage } from "@/lib/campaign/creative-plan";
+import { IMAGE_TASK_SUBMITTED_HINT } from "@/lib/campaign/image-native-flow";
+import { VIDEO_TASK_SUBMITTED_HINT } from "@/lib/campaign/video-native-flow";
 import {
   agentReplyForStage,
   applyCreativeTweak,
@@ -10,9 +12,10 @@ import {
   newMessage,
 } from "@/lib/campaign/parser";
 import { loadSkuPool, toSnapshot } from "@/lib/campaign/service";
-import { findSkuById } from "@/lib/mock/skus";
-import type { AgentMessage, CreativeBrief, RequirementBrief } from "@/lib/campaign/types";
 import { prisma } from "@/lib/db/client";
+import { findSkuById } from "@/lib/mock/skus";
+import { enqueueTask } from "@/lib/queue/task-processor";
+import type { AgentMessage, CreativeBrief, ImageCreativePlanFields, RequirementBrief, VideoCreativePlanFields } from "@/lib/campaign/types";
 
 async function getCampaign(id: string, userId: string) {
   return prisma.campaign.findFirst({ where: { id, userId } });
@@ -120,11 +123,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       const primarySku = skus[0]!;
       const plan = buildFullCreativePlan(nextRequirement, primarySku, campaign.userIntent, skus);
 
+      const nativeFlow = body.nativeFlow === true;
+
       messages.push(newMessage("user", `选品确认：${ids.length} 个商品`));
       messages.push(
         newMessage(
           "agent",
-          `选品已确认，已结合诉求与 ${ids.length} 个商品生成创意方案。请查看下方「创意生成」模块，点击「一键配置」写入各模块配置。`
+          nativeFlow
+            ? "选品已确认，已生成创意方案，请核对下方字段后进入预览。"
+            : `选品已确认，已结合诉求与 ${ids.length} 个商品生成创意方案。请查看下方「创意生成」模块，点击「一键配置」写入各模块配置。`
         )
       );
 
@@ -284,6 +291,77 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           creativeJson: JSON.stringify(creative),
           messagesJson: JSON.stringify(messages),
         },
+      });
+      return jsonOk({ campaign: toSnapshot(updated, skuPool) });
+    }
+
+    if (action === "update_image_creative") {
+      if (stage !== "creative_review") return jsonError("当前阶段无法更新创意方案");
+      const imageCreative = body.imageCreative as ImageCreativePlanFields | undefined;
+      if (!imageCreative) return jsonError("缺少 imageCreative");
+
+      const pkg = parseCreativePackage(campaign.creativeJson);
+      if (!pkg) return jsonError("创意方案不存在");
+
+      const updated = await prisma.campaign.update({
+        where: { id },
+        data: {
+          creativeJson: JSON.stringify({ ...pkg, imageCreative }),
+        },
+      });
+      return jsonOk({ campaign: toSnapshot(updated, skuPool) });
+    }
+
+    if (action === "update_video_creative") {
+      if (stage !== "creative_review") return jsonError("当前阶段无法更新创意方案");
+      const videoCreative = body.videoCreative as VideoCreativePlanFields | undefined;
+      if (!videoCreative) return jsonError("缺少 videoCreative");
+
+      const pkg = parseCreativePackage(campaign.creativeJson);
+      if (!pkg) return jsonError("创意方案不存在");
+
+      const updated = await prisma.campaign.update({
+        where: { id },
+        data: {
+          creativeJson: JSON.stringify({ ...pkg, videoCreative }),
+        },
+      });
+      return jsonOk({ campaign: toSnapshot(updated, skuPool) });
+    }
+
+    if (action === "submit_native_task") {
+      if (stage !== "creative_review") return jsonError("当前阶段无法提交任务");
+
+      const pkg = parseCreativePackage(campaign.creativeJson);
+      const isVideo = requirement.materialType === "video";
+      const task = await prisma.task.create({
+        data: {
+          userId: user.id,
+          name: requirement.taskName ?? (isVideo ? "视频生成任务" : "图片生成任务"),
+          type: isVideo ? "video" : "image",
+          mode: isVideo ? "AI原生视频" : "AI原生素材",
+          totalCount: requirement.confirmedSkuIds?.length ?? 1,
+          payload: JSON.stringify({
+            campaignId: id,
+            imageCreative: pkg?.imageCreative ?? null,
+            videoCreative: pkg?.videoCreative ?? null,
+            requirement,
+            initiatorName: user.name || user.email,
+          }),
+        },
+      });
+      enqueueTask(task.id);
+
+      messages.push(
+        newMessage("user", isVideo ? "确认出片并提交任务" : "确认出图并提交任务")
+      );
+      messages.push(
+        newMessage("agent", isVideo ? VIDEO_TASK_SUBMITTED_HINT : IMAGE_TASK_SUBMITTED_HINT)
+      );
+
+      const updated = await prisma.campaign.update({
+        where: { id },
+        data: { messagesJson: JSON.stringify(messages) },
       });
       return jsonOk({ campaign: toSnapshot(updated, skuPool) });
     }

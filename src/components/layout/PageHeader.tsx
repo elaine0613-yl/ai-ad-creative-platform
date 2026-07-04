@@ -1,6 +1,5 @@
 "use client";
 
-import { useAuth } from "@/components/auth/AuthProvider";
 import { Bell, Search } from "lucide-react";
 
 interface PageHeaderProps {
@@ -20,8 +19,6 @@ export function PageHeader({
   hideGlobalSearch = false,
   toolbar,
 }: PageHeaderProps) {
-  const { user } = useAuth();
-
   return (
     <header className="shrink-0 border-b border-gray-200 bg-white">
       <div className="flex flex-col gap-4 px-6 py-4 xl:flex-row xl:items-start xl:justify-between">
@@ -52,12 +49,6 @@ export function PageHeader({
             <Bell className="h-5 w-5" />
             <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" />
           </button>
-          <div className="flex items-center gap-2 rounded-lg bg-brand-50 px-3 py-2">
-            <span className="text-xs text-gray-500">额度</span>
-            <span className="text-sm font-semibold tabular-nums text-brand-700">
-              {user?.credits ?? "--"}/{user?.totalCredits ?? "--"}
-            </span>
-          </div>
         </div>
       </div>
 

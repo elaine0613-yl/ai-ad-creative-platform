@@ -40,7 +40,9 @@ export function Sidebar() {
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
         {NAV_ITEMS.map((item) => {
           const Icon = iconMap[item.icon] ?? ImageIcon;
-          const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+          const isActive =
+            pathname === item.href ||
+            pathname.startsWith(item.href + "/");
 
           return (
             <Link
@@ -56,7 +58,9 @@ export function Sidebar() {
               <Icon className="h-4 w-4 shrink-0" />
               <span className="flex-1">{item.label}</span>
               {item.badge && (
-                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">{item.badge}</span>
+                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
+                  {item.badge}
+                </span>
               )}
             </Link>
           );

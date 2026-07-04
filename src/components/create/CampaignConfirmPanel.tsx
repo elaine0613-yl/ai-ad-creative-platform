@@ -6,7 +6,6 @@ import {
   type CampaignFieldGroup,
   type CampaignFieldItem,
 } from "@/lib/campaign/field-map";
-import type { InteractionLogEntry } from "@/lib/campaign/live-sync";
 import type { CampaignSnapshot } from "@/lib/campaign/types";
 import {
   formatCreativePlanText,
@@ -48,9 +47,10 @@ interface CampaignConfirmPanelProps {
   livePreview?: boolean;
   syncing?: boolean;
   highlightedFields?: string[];
-  interactionLog?: InteractionLogEntry[];
   agentFilledKeys?: Set<string>;
   selectedSkuIds?: string[];
+  /** AI 原生图片链路：需求确认面板字段结构 */
+  nativeDemoFlow?: boolean;
 }
 
 const OWNER_META = {
@@ -88,11 +88,6 @@ function FormField({
     <label className="flex items-center gap-1.5 pt-2 text-xs font-medium text-gray-500">
       {item.label}
       {item.hint && <span className="font-normal text-gray-400">{item.hint}</span>}
-      {item.agentParsed && (
-        <span className="rounded bg-brand-50 px-1 py-0.5 text-[9px] font-normal text-brand-600">
-          Agent
-        </span>
-      )}
     </label>
   );
 
@@ -354,41 +349,6 @@ function AutoSection({ group }: { group: CampaignFieldGroup }) {
   );
 }
 
-function InteractionLogBlock({ entries }: { entries: InteractionLogEntry[] }) {
-  if (entries.length === 0) return null;
-
-  return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-      <h3 className="text-xs font-semibold text-gray-800">对话映射记录</h3>
-      <p className="mt-0.5 text-[10px] text-gray-500">Agent 与运营的每轮对话如何映射到右侧字段</p>
-      <div className="mt-3 space-y-3">
-        {entries.map((entry) => (
-          <div key={entry.id} className="rounded-lg bg-gray-50 px-3 py-2">
-            <div className="flex items-center gap-1.5 text-[10px] text-gray-500">
-              {entry.role === "agent" ? (
-                <Bot className="h-3 w-3 text-brand-600" />
-              ) : (
-                <User className="h-3 w-3" />
-              )}
-              <span>{entry.role === "agent" ? "Agent" : "运营"}</span>
-            </div>
-            <p className="mt-1 text-[11px] leading-relaxed text-gray-700">{entry.message}</p>
-            {entry.fieldUpdates.length > 0 && (
-              <ul className="mt-2 space-y-0.5">
-                {entry.fieldUpdates.map((u, i) => (
-                  <li key={`${entry.id}-${i}`} className="text-[10px] text-brand-700">
-                    {u.label} → {u.value}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export function CampaignConfirmPanel({
   campaign,
   materialType,
@@ -408,9 +368,9 @@ export function CampaignConfirmPanel({
   livePreview = false,
   syncing = false,
   highlightedFields = [],
-  interactionLog = [],
   agentFilledKeys,
   selectedSkuIds = [],
+  nativeDemoFlow = false,
 }: CampaignConfirmPanelProps) {
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const isDemo = preview || livePreview;
@@ -426,8 +386,8 @@ export function CampaignConfirmPanel({
     !isDemo && campaign.stage === "creative_review" && !!campaign.creative;
 
   const groups = useMemo(
-    () => buildCampaignFieldGroups(campaign, materialType, agentFilledKeys),
-    [campaign, materialType, agentFilledKeys]
+    () => buildCampaignFieldGroups(campaign, materialType, agentFilledKeys, nativeDemoFlow),
+    [campaign, materialType, agentFilledKeys, nativeDemoFlow]
   );
 
   const handleSave = async (fieldKey: string, value: string) => {
@@ -453,11 +413,6 @@ export function CampaignConfirmPanel({
           {preview && (
             <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] text-gray-600">示例</span>
           )}
-          {livePreview && (
-            <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[10px] text-brand-700">
-              Agent 已解析
-            </span>
-          )}
           {syncing && (
             <span className="flex items-center gap-1 text-[10px] text-gray-500">
               <Loader2 className="h-3 w-3 animate-spin" />
@@ -467,20 +422,20 @@ export function CampaignConfirmPanel({
         </div>
         <p className="text-xs text-gray-500">
           {isDemo
-            ? "运营发一段话 → 智能填写配置 → 核对基础信息（Agent 标识为 AI 填充）"
+            ? "运营发一段话 → 智能填写配置 → 核对基础信息"
             : campaign.stage === "confirm"
               ? "核对基础信息，确认后进入智能选品。"
               : campaign.stage === "product_review"
                 ? "基础信息已确认，请在下方智能选品模块配置并确认商品。"
                 : campaign.stage === "creative_review"
-                  ? showCreative
-                    ? "创意已生成并预填配置面板，确认后开始审核并生成。"
-                    : "请点击「创意生成」。"
+                  ? nativeDemoFlow
+                    ? "选品已确认，请核对创意方案配置后进入预览。"
+                    : showCreative
+                      ? "创意已生成并预填配置面板，确认后开始审核并生成。"
+                      : "请点击「创意生成」。"
                   : "方案已锁定，进入生成与审核流程。"}
         </p>
       </div>
-
-      <InteractionLogBlock entries={interactionLog} />
 
       {basicGroup && (
         <MaterialPlanSection
@@ -502,7 +457,7 @@ export function CampaignConfirmPanel({
         />
       ) : null}
 
-      {creativeGroup && fieldsEditable && (
+      {creativeGroup && fieldsEditable && !nativeDemoFlow && (
         <MaterialPlanSection
           group={creativeGroup}
           onSave={handleSave}
@@ -512,7 +467,10 @@ export function CampaignConfirmPanel({
         />
       )}
 
-      {showCreative && campaign.creativePlan && campaign.creativePlan.sections.length === 0 && (
+      {showCreative &&
+        campaign.creativePlan &&
+        campaign.creativePlan.sections.length === 0 &&
+        !nativeDemoFlow && (
         <CreativePlanBlock campaign={campaign} materialType={materialType} />
       )}
 
@@ -546,7 +504,7 @@ export function CampaignConfirmPanel({
           </Button>
         )}
 
-        {canStartGeneration && onStartGeneration && !hideGenerateCreative && (
+        {canStartGeneration && onStartGeneration && !hideGenerateCreative && !nativeDemoFlow && (
           <Button className="w-full" size="lg" onClick={onStartGeneration} loading={loading}>
             <Sparkles className="h-4 w-4" />
             开始审核并生成

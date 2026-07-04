@@ -157,11 +157,20 @@ export interface PlatformPreset {
   format?: string;
 }
 
+export interface NavSubItem {
+  label: string;
+  href: string;
+  badge?: string;
+  /** 预留入口，仅展示占位页 */
+  placeholder?: boolean;
+}
+
 export interface NavItem {
   label: string;
   href: string;
   icon: string;
   badge?: string;
+  children?: NavSubItem[];
 }
 
 export type KnowledgeLibraryType = "image" | "video";

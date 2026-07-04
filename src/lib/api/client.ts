@@ -74,9 +74,25 @@ export const api = {
     templateUrl: "/api/batch/parse",
   },
   tasks: {
-    list: (status?: string) =>
-      request<{ tasks: unknown[] }>(`/api/tasks${status ? `?status=${status}` : ""}`),
+    list: (params?: { status?: string; dateFrom?: string; dateTo?: string }) => {
+      const qs = new URLSearchParams();
+      if (params?.status && params.status !== "all") qs.set("status", params.status);
+      if (params?.dateFrom) qs.set("dateFrom", params.dateFrom);
+      if (params?.dateTo) qs.set("dateTo", params.dateTo);
+      const query = qs.toString();
+      return request<{ tasks: unknown[] }>(`/api/tasks${query ? `?${query}` : ""}`);
+    },
     get: (id: string) => request<{ task: unknown }>(`/api/tasks/${id}`),
+    update: (id: string, body: Record<string, unknown>) =>
+      request<{ task: unknown }>(`/api/tasks/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+    resubmitAudit: (id: string, body: Record<string, unknown>) =>
+      request<{ task: unknown; message: string }>(`/api/tasks/${id}`, {
+        method: "POST",
+        body: JSON.stringify({ action: "resubmit_audit", ...body }),
+      }),
     retry: (id: string) => request<{ message: string }>(`/api/tasks/${id}`, { method: "POST" }),
   },
   materials: {

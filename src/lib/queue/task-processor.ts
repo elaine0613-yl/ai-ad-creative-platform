@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db/client";
 import { getImageProvider, getVideoProvider } from "@/lib/ai";
 import { buildImagePrompt } from "@/lib/ai/types";
+import { isNativeDemoPayload, processNativeImageTask, processNativeVideoTask } from "@/lib/tasks/native-pipeline";
 
 export async function processTask(taskId: string) {
   const task = await prisma.task.findUnique({ where: { id: taskId } });
@@ -13,6 +14,16 @@ export async function processTask(taskId: string) {
 
   try {
     const payload = JSON.parse(task.payload);
+
+    if (task.type === "image" && isNativeDemoPayload(payload)) {
+      await processNativeImageTask(taskId, task);
+      return;
+    }
+
+    if (task.type === "video" && isNativeDemoPayload(payload)) {
+      await processNativeVideoTask(taskId, task);
+      return;
+    }
 
     if (task.type === "image") {
       const provider = getImageProvider();

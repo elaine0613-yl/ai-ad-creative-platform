@@ -1,13 +1,29 @@
 import type { ImageCreationConfig, VideoCreationConfig } from "@/lib/create/config-types";
 import { defaultImageConfig, defaultVideoConfig } from "@/lib/create/config-types";
 import type { MaterialType } from "@/lib/types";
+import {
+  LIGHTING_TEXTURE_OPTIONS,
+  VISUAL_THEME_FORM_OPTIONS,
+} from "@/lib/campaign/image-native-flow";
+import {
+  CAMERA_MOVEMENT_OPTIONS,
+  CORE_LENS_FOCUS_OPTIONS,
+  CUT_FREQUENCY_OPTIONS,
+  DYNAMIC_LIGHTING_OPTIONS,
+  DYNAMIC_VISUAL_EFFECT_OPTIONS,
+  LENS_COMPOSITION_OPTIONS,
+  VIDEO_PLOT_STRUCTURE_OPTIONS,
+  VOICEOVER_STYLE_OPTIONS,
+} from "@/lib/campaign/video-native-flow";
 import { BUSINESS_TEMPLATES } from "./templates";
 import type {
   CreativeBrief,
   CreativePlanPackage,
   CreativePlanSection,
+  ImageCreativePlanFields,
   RequirementBrief,
   SkuRecord,
+  VideoCreativePlanFields,
 } from "./types";
 
 function industryKey(industry: string): string {
@@ -367,6 +383,142 @@ function buildCreativeNarrative(
   return paragraphs.join("\n\n");
 }
 
+function buildImageCreativeFields(
+  requirement: RequirementBrief,
+  sku: SkuRecord,
+  userIntent: string
+): ImageCreativePlanFields {
+  const lines = sellingLines(requirement);
+  const isCoupon =
+    userIntent.includes("领券") ||
+    userIntent.includes("划算") ||
+    (requirement.coreBenefit ?? "").includes("券");
+
+  const atmosphereMap: Record<string, string> = {
+    温和种草: "安静种草",
+    强营销逼单: "热闹促销",
+    趣味生活化: "趣味剧情",
+    专业测评: "专业测评",
+  };
+  const atmosphere =
+    atmosphereMap[requirement.contentTone ?? ""] ??
+    (requirement.visualStyle === "热闹促销" ? "热闹促销" : "生活化实拍");
+
+  const storyParts = [
+    requirement.targetAudience && `面向${requirement.targetAudience}`,
+    requirement.userPainPoints && `解决「${requirement.userPainPoints}」`,
+    requirement.coreBenefit && `突出${requirement.coreBenefit}`,
+    requirement.campaignGoal && `目标：${requirement.campaignGoal}`,
+  ].filter(Boolean);
+
+  const themeOptions = [...VISUAL_THEME_FORM_OPTIONS];
+  const lightingOptions = [...LIGHTING_TEXTURE_OPTIONS];
+
+  let visualTheme = themeOptions[0];
+  if (requirement.visualStyle?.includes("生活") || userIntent.includes("居家")) {
+    visualTheme = "居家使用场景";
+  } else if (userIntent.includes("模特") || userIntent.includes("上身")) {
+    visualTheme = "模特上身展示";
+  } else if (userIntent.includes("拆箱")) {
+    visualTheme = "拆箱实拍";
+  } else if (userIntent.includes("细节") || userIntent.includes("特写")) {
+    visualTheme = "细节特写";
+  } else if (requirement.visualStyle === "热闹促销" || isCoupon) {
+    visualTheme = "对比测评场景";
+  }
+
+  let lighting = lightingOptions[3];
+  if (requirement.visualStyle?.includes("生活")) {
+    lighting = "自然光";
+  } else if (requirement.visualStyle === "热闹促销") {
+    lighting = "高饱和促销风";
+  } else if (requirement.contentTone === "专业测评") {
+    lighting = "冷高级感";
+  } else if (requirement.visualStyle?.includes("治愈")) {
+    lighting = "低饱和度治愈风";
+  } else if (isCoupon) {
+    lighting = "暖光";
+  }
+
+  return {
+    creativeAtmosphere: atmosphere,
+    mainTitle: lines[0] ?? (isCoupon ? "领券后更划算" : `${sku.name} 好物推荐`),
+    subTitle: lines[1] ?? requirement.sellingPoints.split("、")[0] ?? sku.category,
+    ctaTitle: isCoupon ? "立即领券" : "马上抢购",
+    visualThemeForm: visualTheme,
+    productDisplayForm: isCoupon ? "商品+权益标签叠加" : "单商品高清近景",
+    sceneEnvironment: requirement.visualStyle?.includes("生活")
+      ? "真实居家/宿舍场景"
+      : requirement.visualStyle === "热闹促销"
+        ? "节日氛围场景"
+        : "极简纯白棚拍",
+    lightingTexture: lighting,
+    creativeStoryKernel:
+      storyParts.join("，") ||
+      `上班族/学生党日常场景下发现${sku.name}，真实感展示解决刚需，引导点击转化。`,
+  };
+}
+
+function buildVideoCreativeFields(
+  requirement: RequirementBrief,
+  sku: SkuRecord,
+  userIntent: string
+): VideoCreativePlanFields {
+  const imageBase = buildImageCreativeFields(requirement, sku, userIntent);
+  const duration = requirement.videoDurationTier ?? "15s";
+  const isCoupon =
+    userIntent.includes("领券") ||
+    userIntent.includes("划算") ||
+    (requirement.coreBenefit ?? "").includes("券");
+  const media = requirement.media ?? "抖音";
+
+  let cutFrequency = CUT_FREQUENCY_OPTIONS[1];
+  let cameraMovement = CAMERA_MOVEMENT_OPTIONS[0];
+  let plotStructure = VIDEO_PLOT_STRUCTURE_OPTIONS[0];
+  let lensFocus = CORE_LENS_FOCUS_OPTIONS[0];
+  let voiceoverStyle = VOICEOVER_STYLE_OPTIONS[0];
+
+  if (media === "快手" || isCoupon) {
+    cutFrequency = CUT_FREQUENCY_OPTIONS[2];
+    voiceoverStyle = VOICEOVER_STYLE_OPTIONS[3];
+    plotStructure = VIDEO_PLOT_STRUCTURE_OPTIONS[0];
+    lensFocus = CORE_LENS_FOCUS_OPTIONS[3];
+  } else if (media === "小红书") {
+    cutFrequency = CUT_FREQUENCY_OPTIONS[0];
+    cameraMovement = CAMERA_MOVEMENT_OPTIONS[1];
+    plotStructure = VIDEO_PLOT_STRUCTURE_OPTIONS[1];
+    lensFocus = CORE_LENS_FOCUS_OPTIONS[0];
+    voiceoverStyle = VOICEOVER_STYLE_OPTIONS[2];
+  }
+
+  const scriptLines = [
+    `0-3s【钩子】${requirement.userPainPoints || "日常痛点场景"}，引出${sku.name}`,
+    `3-${duration === "15s" ? "8" : "12"}s【展示】${LENS_COMPOSITION_OPTIONS[1]}，突出${requirement.coreBenefit || sku.category}`,
+    `${duration === "15s" ? "8-12" : "12-20"}s【卖点】近景细节+口播：${imageBase.subTitle}`,
+    `结尾【CTA】${imageBase.ctaTitle}，${requirement.promotion || "限时福利"}引导点击`,
+  ];
+
+  return {
+    creativeAtmosphere: imageBase.creativeAtmosphere,
+    mainTitle: imageBase.mainTitle,
+    subTitle: imageBase.subTitle,
+    ctaTitle: imageBase.ctaTitle,
+    sceneEnvironment: imageBase.sceneEnvironment,
+    lensCompositionForm: LENS_COMPOSITION_OPTIONS[isCoupon ? 4 : 1],
+    cameraMovement,
+    cutFrequency,
+    videoPlotStructure: plotStructure,
+    coreLensFocus: lensFocus,
+    voiceoverStyle,
+    dynamicLighting: media === "小红书" ? DYNAMIC_LIGHTING_OPTIONS[0] : DYNAMIC_LIGHTING_OPTIONS[1],
+    dynamicVisualEffect: DYNAMIC_VISUAL_EFFECT_OPTIONS[1],
+    creativeStoryKernel:
+      imageBase.creativeStoryKernel ||
+      `${duration} 短视频：${plotStructure}，面向${requirement.targetAudience || "目标人群"}种草转化。`,
+    fullVideoScript: scriptLines.join("\n"),
+  };
+}
+
 export function buildFullCreativePlan(
   requirement: RequirementBrief,
   sku: SkuRecord,
@@ -413,10 +565,11 @@ export function buildFullCreativePlan(
 
     return {
       brief,
-      summary: `为「${sku.name}」等 ${allSkus.length} 个商品生成 ${videoConfig.duration} 秒 ${videoConfig.globalStyle} 视频创意方案。`,
+      summary: `为「${sku.name}」等 ${allSkus.length} 个商品生成 ${requirement.videoDurationTier ?? videoConfig.duration + "s"} ${videoConfig.globalStyle} 视频创意方案。`,
       narrative,
       sections,
       videoConfig,
+      videoCreative: buildVideoCreativeFields(requirement, sku, userIntent),
       agentFilledFields,
       configApplied: false,
     };
@@ -434,6 +587,7 @@ export function buildFullCreativePlan(
     narrative,
     sections,
     imageConfig,
+    imageCreative: buildImageCreativeFields(requirement, sku, userIntent),
     agentFilledFields,
     configApplied: false,
   };

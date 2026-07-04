@@ -3,8 +3,10 @@
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { CampaignConfirmPanel } from "@/components/create/CampaignConfirmPanel";
-import { CreationPipelineSteps } from "@/components/create/CreationPipelineSteps";
 import { CreativeGenerationPanel } from "@/components/create/CreativeGenerationPanel";
+import { NativeCreativePlanPanel } from "@/components/create/NativeCreativePlanPanel";
+import { NativeVideoCreativePlanPanel } from "@/components/create/NativeVideoCreativePlanPanel";
+import { PreviewSubmitPanel } from "@/components/create/PreviewSubmitPanel";
 import { RequirementInterpretPanel } from "@/components/create/RequirementInterpretPanel";
 import { SaveToLibraryDialog } from "@/components/create/SaveToLibraryDialog";
 import { SmartSelectionPanel } from "@/components/create/SmartSelectionPanel";
@@ -23,11 +25,8 @@ import {
 } from "@/lib/create/config-types";
 import type { LibrarySaveMode } from "@/lib/material-library/types";
 import {
-  appendInteractionLog,
-  buildFieldUpdates,
   buildOptimisticCampaign,
   diffFieldKeys,
-  type InteractionLogEntry,
 } from "@/lib/campaign/live-sync";
 import { buildMockCampaignPreview } from "@/lib/campaign/mock-preview";
 import { agentReplyForStage, newMessage } from "@/lib/campaign/parser";
@@ -42,10 +41,19 @@ import {
   type RequirementInterpretation,
 } from "@/lib/campaign/requirement-interpretation";
 import { buildRecommendations } from "@/lib/campaign/service";
-import type { AgentMessage, CampaignSnapshot, RequirementBrief } from "@/lib/campaign/types";
-import { detectChatIntent, getSendDisabledReason, isChatActiveStage, isFlowLockedStage, stageToPipelineIndex } from "@/lib/campaign/workflow";
+import type { AgentMessage, CampaignSnapshot, ImageCreativePlanFields, RequirementBrief, VideoCreativePlanFields } from "@/lib/campaign/types";
+import {
+  IMAGE_AGENT_INTRO,
+  IMAGE_CREATIVE_LOADING_HINT,
+} from "@/lib/campaign/image-native-flow";
+import {
+  VIDEO_AGENT_INTRO,
+  VIDEO_CREATIVE_LOADING_HINT,
+} from "@/lib/campaign/video-native-flow";
+import { detectChatIntent, getSendDisabledReason, isChatActiveStage, isFlowLockedStage } from "@/lib/campaign/workflow";
 import { INTERNAL_SKUS } from "@/lib/mock/skus";
 import type { MaterialType } from "@/lib/types";
+import { AgentMessageContent } from "@/components/tasks/TaskUi";
 import { cn } from "@/lib/utils";
 import { Bot, Download, Loader2, Package, Send, Shield, Sparkles, User } from "lucide-react";
 import Link from "next/link";
@@ -54,6 +62,11 @@ import { flushSync } from "react-dom";
 
 interface SmartCreationFlowProps {
   materialType: MaterialType;
+  mode?: "default" | "image-native" | "video-native";
+  /** 由外层页面提供顶栏时隐藏内部标题区 */
+  suppressHeader?: boolean;
+  /** 外层顶栏高度，用于左侧对话区 sticky 偏移 */
+  layoutTopOffset?: number;
   title: string;
   subtitle: string;
   placeholder: string;
@@ -61,11 +74,16 @@ interface SmartCreationFlowProps {
 }
 
 const BASIC_AGENT_KEYS = new Set([
-  "taskName",
   "channel",
   "media",
-  "sizeRequirement",
-  "creativesPerProduct",
+  "adTheme",
+  "campaignGoal",
+  "targetAudience",
+  "userPainPoints",
+  "coreBenefit",
+  "visualStyle",
+  "contentTone",
+  "taskName",
   "landingType",
   "coreSummary",
   "specialConstraints",
@@ -76,6 +94,10 @@ const SELECTION_AGENT_KEYS = new Set([
   "selectionStrategy",
   "productSelectionMethod",
   "productKeywords",
+  "productDataPool",
+  "pickMethod",
+  "selectionCoreStrategy",
+  "hasBenefitRights",
 ]);
 
 function buildPreviewFromInterpretation(
@@ -114,14 +136,19 @@ function requirementFieldsFromInterpretation(
     taskName: "taskName",
     channel: "channel",
     media: "media",
-    sizeRequirement: "sizeRequirement",
-    creativesPerProduct: "creativesPerProduct",
     landingType: "landingType",
     coreSummary: "coreSummary",
     specialConstraints: "specialConstraints",
     selectionCount: "selectionCount",
     selectionStrategy: "selectionStrategy",
     productKeywords: "productKeywords",
+    adTheme: "adTheme",
+    campaignGoal: "campaignGoal",
+    targetAudience: "targetAudience",
+    userPainPoints: "userPainPoints",
+    coreBenefit: "coreBenefit",
+    visualStyle: "visualStyle",
+    contentTone: "contentTone",
   };
   const fields: Record<string, string> = {};
   for (const key of agentFilledKeys) {
@@ -136,11 +163,17 @@ function requirementFieldsFromInterpretation(
 
 export function SmartCreationFlow({
   materialType,
+  mode = "default",
+  suppressHeader = false,
+  layoutTopOffset = 0,
   title,
   subtitle,
   placeholder,
   examplePrompt,
 }: SmartCreationFlowProps) {
+  const nativeImageFlow = mode === "image-native" && materialType === "image";
+  const nativeVideoFlow = mode === "video-native" && materialType === "video";
+  const nativeDemoFlow = nativeImageFlow || nativeVideoFlow;
   const [campaign, setCampaign] = useState<CampaignSnapshot | null>(null);
   const [optimisticCampaign, setOptimisticCampaign] = useState<CampaignSnapshot | null>(null);
   const [interpretPreview, setInterpretPreview] = useState<CampaignSnapshot | null>(null);
@@ -159,7 +192,6 @@ export function SmartCreationFlow({
   const inputDraftRef = useRef("");
   const [loading, setLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [interactionLog, setInteractionLog] = useState<InteractionLogEntry[]>([]);
   const [highlightedFields, setHighlightedFields] = useState<string[]>([]);
   const [removedSkuIds, setRemovedSkuIds] = useState<string[]>([]);
   const [imageConfig, setImageConfig] = useState<ImageCreationConfig>(() => defaultImageConfig());
@@ -167,6 +199,9 @@ export function SmartCreationFlow({
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [agentFilledFields, setAgentFilledFields] = useState<string[]>([]);
   const [creativeConfigApplied, setCreativeConfigApplied] = useState(false);
+  const [creativeConfirmed, setCreativeConfirmed] = useState(false);
+  const [taskSubmitted, setTaskSubmitted] = useState(false);
+  const [introShown, setIntroShown] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -279,10 +314,21 @@ export function SmartCreationFlow({
 
   useEffect(() => {
     setCreativeConfigApplied(false);
+    setCreativeConfirmed(false);
+    setTaskSubmitted(false);
+    setPreviewUrl(null);
     if (!campaign?.creativePlan) {
       setAgentFilledFields([]);
     }
   }, [campaign?.id, campaign?.creativePlan?.narrative]);
+
+  useEffect(() => {
+    if (!nativeDemoFlow || introShown || campaign || pendingMessages.length > 0) return;
+    setPendingMessages([
+      newMessage("agent", nativeVideoFlow ? VIDEO_AGENT_INTRO : IMAGE_AGENT_INTRO),
+    ]);
+    setIntroShown(true);
+  }, [nativeDemoFlow, nativeVideoFlow, introShown, campaign, pendingMessages.length]);
 
   const applyCreativePlanFromCampaign = useCallback(
     (c: CampaignSnapshot) => {
@@ -305,7 +351,8 @@ export function SmartCreationFlow({
   const showWorkflowPanel =
     isStaticPreview ||
     isLivePreview ||
-    (!!campaign && isChatActiveStage(campaign.stage)) ||
+    (!!campaign &&
+      (isChatActiveStage(campaign.stage) || (nativeDemoFlow && taskSubmitted))) ||
     (interpretation !== null && pendingMessages.length > 0);
 
   const showSelectionPanel =
@@ -326,24 +373,13 @@ export function SmartCreationFlow({
 
   const recordFieldSync = useCallback(
     (
-      role: "user" | "agent",
-      message: string,
+      _role: "user" | "agent",
+      _message: string,
       prev: CampaignSnapshot | null,
       next: CampaignSnapshot
     ) => {
       const keys = diffFieldKeys(prev, next, materialType);
       flashFields(keys);
-      const fieldUpdates = buildFieldUpdates(next, materialType, keys);
-      if (fieldUpdates.length === 0 && role === "user") return;
-      setInteractionLog((log) =>
-        appendInteractionLog(log, {
-          id: `log-${Date.now()}`,
-          role,
-          message,
-          fieldUpdates,
-          at: new Date().toISOString(),
-        })
-      );
     },
     [flashFields, materialType]
   );
@@ -352,7 +388,7 @@ export function SmartCreationFlow({
     if (!campaign?.creativePlan) return;
     applyCreativePlanFromCampaign(campaign);
     setSendFeedback(
-      `已写入 ${campaign.creativePlan.agentFilledFields.length} 项配置，带 Agent 标识可继续修改`
+      `已写入 ${campaign.creativePlan.agentFilledFields.length} 项配置，可继续修改`
     );
   }, [campaign, applyCreativePlanFromCampaign]);
 
@@ -503,12 +539,22 @@ export function SmartCreationFlow({
           "taskName",
           "channel",
           "media",
-          "sizeRequirement",
           "landingType",
           "coreSummary",
           "specialConstraints",
           "selectionStrategy",
           "productKeywords",
+          "adTheme",
+          "campaignGoal",
+          "targetAudience",
+          "userPainPoints",
+          "coreBenefit",
+          "visualStyle",
+          "contentTone",
+          "productDataPool",
+          "pickMethod",
+          "selectionCoreStrategy",
+          "hasBenefitRights",
         ] as const;
         for (const key of syncKeys) {
           const val = partialReq[key as keyof RequirementBrief];
@@ -610,8 +656,11 @@ export function SmartCreationFlow({
     setLoading(false);
     setAgentFilledFields([]);
     setCreativeConfigApplied(false);
+    setCreativeConfirmed(false);
+    setTaskSubmitted(false);
+    setPreviewUrl(null);
+    setIntroShown(false);
     setSendFeedback(null);
-    setInteractionLog([]);
     inputDraftRef.current = "";
     setInputVersion((v) => v + 1);
   };
@@ -640,7 +689,9 @@ export function SmartCreationFlow({
     try {
       const result = applyPartialParse(text);
       const agentReply = !campaign
-        ? agentReplyForStage("confirm", { requirement: result.requirement })
+        ? nativeDemoFlow
+          ? buildAgentParseReply(result)
+          : agentReplyForStage("confirm", { requirement: result.requirement })
         : buildAgentParseReply(result);
 
       flushSync(() => {
@@ -832,16 +883,64 @@ export function SmartCreationFlow({
 
   const confirmRequirement = () => runAction("confirm_requirement");
   const confirmProduct = () =>
-    runAction("confirm_product", { skuIds: selectedSkuIds });
+    runAction("confirm_product", { skuIds: selectedSkuIds, nativeFlow: nativeDemoFlow });
 
   const generateCreative = async () => {
     if (!campaign) return;
     setCreativeConfigApplied(false);
+    setCreativeConfirmed(false);
+    setPreviewUrl(null);
     setAgentFilledFields([]);
     setLoading(true);
     try {
       const { campaign: c } = await api.campaigns.action(campaign.id, "generate_creative");
       setCampaign(c);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleImageCreativeChange = async (fields: ImageCreativePlanFields) => {
+    if (!campaign) return;
+    setCampaign((prev) => {
+      if (!prev?.creativePlan) return prev;
+      return {
+        ...prev,
+        creativePlan: { ...prev.creativePlan, imageCreative: fields },
+      };
+    });
+    try {
+      await api.campaigns.action(campaign.id, "update_image_creative", { imageCreative: fields });
+    } catch {
+      /* 演示环境忽略同步失败 */
+    }
+  };
+
+  const handleVideoCreativeChange = async (fields: VideoCreativePlanFields) => {
+    if (!campaign) return;
+    setCampaign((prev) => {
+      if (!prev?.creativePlan) return prev;
+      return {
+        ...prev,
+        creativePlan: { ...prev.creativePlan, videoCreative: fields },
+      };
+    });
+    try {
+      await api.campaigns.action(campaign.id, "update_video_creative", { videoCreative: fields });
+    } catch {
+      /* demo */
+    }
+  };
+
+  const confirmCreativePlan = () => {
+    setCreativeConfirmed(true);
+  };
+
+  const regeneratePreview = async () => {
+    if (!campaign || loading) return;
+    setLoading(true);
+    try {
+      await new Promise((r) => setTimeout(r, 600));
     } finally {
       setLoading(false);
     }
@@ -953,6 +1052,12 @@ export function SmartCreationFlow({
     if (!campaign || loading) return;
     setLoading(true);
     try {
+      if (nativeDemoFlow) {
+        const { campaign: c } = await api.campaigns.action(campaign.id, "submit_native_task");
+        setCampaign(c);
+        setTaskSubmitted(true);
+        return;
+      }
       const { campaign: c } = await api.campaigns.action(campaign.id, "confirm_creative");
       setCampaign(c);
       const gen = await api.campaigns.generate(c.id);
@@ -968,8 +1073,8 @@ export function SmartCreationFlow({
 
   const busy =
     loading ||
-    campaign?.stage === "generating" ||
-    campaign?.stage === "external_review";
+    (!nativeDemoFlow &&
+      (campaign?.stage === "generating" || campaign?.stage === "external_review"));
 
   const canChat =
     !campaign ||
@@ -989,41 +1094,42 @@ export function SmartCreationFlow({
 
   const canSend = !sendBlocked;
 
-  const pipelineIndex = campaign ? stageToPipelineIndex(campaign.stage) : interpretation ? 0 : 0;
-
   const selectionReadOnly =
     isStaticPreview || (!!campaign && campaign.stage !== "product_review");
 
+  const stickyTop = suppressHeader ? layoutTopOffset : headerHeight;
+
   return (
-    <div className="min-h-dvh bg-[#f4f4f5]">
-      {/* 顶栏：滚动时吸顶 */}
+    <div className={cn("bg-[#f4f4f5]", suppressHeader ? "min-h-0 flex-1" : "min-h-dvh")}>
+      {!suppressHeader && (
       <div
         ref={headerRef}
         className="sticky top-0 z-20 border-b border-gray-200 bg-white px-6 py-3 shadow-sm"
       >
         <h1 className="text-xl font-semibold tracking-tight text-gray-900">{title}</h1>
-        <CreationPipelineSteps currentIndex={pipelineIndex} className="mt-2" />
         {subtitle ? (
           <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-gray-500">{subtitle}</p>
         ) : null}
       </div>
+      )}
 
       <div className="flex items-start">
-        {/* 左侧对话区：sticky 布局，避免 fixed 导致的点击失效 */}
         <aside
           className="sticky flex w-[380px] shrink-0 flex-col self-start border-r border-gray-200 bg-white"
-          style={{ top: headerHeight, height: `calc(100dvh - ${headerHeight}px)` }}
+          style={{ top: stickyTop, height: `calc(100dvh - ${stickyTop}px)` }}
         >
           <div className="shrink-0 border-b border-gray-100 px-4 py-3">
             <h2 className="text-sm font-semibold text-gray-900">和 Agent 对话</h2>
             <p className="mt-1 text-[11px] leading-relaxed text-gray-500">
-              写好诉求后点击发送，Agent 会回复并同步右侧；未识别字段请手动补充。
+              {nativeDemoFlow
+                ? "输入自然语言投放需求，Agent 静默拆解并填入右侧需求确认面板。"
+                : "写好诉求后点击发送，Agent 会回复并同步右侧；未识别字段请手动补充。"}
             </p>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4 scrollbar-thin">
           <div className="space-y-3">
-            {!chatMessages.length && (
+            {!chatMessages.length && !nativeDemoFlow && (
               <button
                 type="button"
                 className="flex w-full gap-2 text-left"
@@ -1068,7 +1174,11 @@ export function SmartCreationFlow({
                     msg.role === "user" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-800"
                   )}
                 >
-                  {msg.content}
+                  {msg.role === "agent" ? (
+                    <AgentMessageContent content={msg.content} />
+                  ) : (
+                    msg.content
+                  )}
                 </p>
               </div>
             ))}
@@ -1083,10 +1193,21 @@ export function SmartCreationFlow({
                 </p>
               </div>
             )}
+            {loading && campaign?.stage === "creative_review" && nativeDemoFlow && !creativeConfirmed && (
+              <div className="flex gap-2">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-700">
+                  <Bot className="h-3.5 w-3.5" />
+                </div>
+                <p className="rounded-2xl bg-gray-100 px-3 py-2 text-sm text-gray-600">
+                  {nativeVideoFlow ? VIDEO_CREATIVE_LOADING_HINT : IMAGE_CREATIVE_LOADING_HINT}
+                </p>
+              </div>
+            )}
 
             <div ref={chatEndRef} />
           </div>
 
+          {!nativeDemoFlow && (
           <RequirementInterpretPanel
             interpretation={interpretation}
             missingFields={interpretMissing}
@@ -1095,6 +1216,7 @@ export function SmartCreationFlow({
             onChange={handleInterpretChange}
             onSaveTemplate={interpretation ? handleSaveDemandTemplate : undefined}
           />
+          )}
         </div>
 
         <div className="relative z-10 shrink-0 space-y-3 border-t border-gray-200 bg-white p-4">
@@ -1190,7 +1312,7 @@ export function SmartCreationFlow({
           )}
           {!sendBlocked && !emptyInputHint && (
             <p className="text-[11px] text-gray-400">
-              发送后 Agent 回复并填入右侧（带 Agent 标签）；支持 ⌘/Ctrl + Enter 快捷发送
+              发送后右侧字段将同步更新；支持 ⌘/Ctrl + Enter 快捷发送
             </p>
           )}
         </div>
@@ -1210,8 +1332,8 @@ export function SmartCreationFlow({
                 selectedSkuIds={selectedSkuIds}
                 loading={loading}
                 highlightedFields={highlightedFields}
-                interactionLog={interactionLog}
                 agentFilledKeys={rightAgentFilledKeys}
+                nativeDemoFlow={nativeDemoFlow}
                 onSelectSku={toggleSku}
                 onRemoveSku={removeSku}
                 onUpdateField={updateField}
@@ -1232,6 +1354,7 @@ export function SmartCreationFlow({
                   loading={loading}
                   agentFilledKeys={selectionAgentFilledKeys}
                   readOnly={selectionReadOnly}
+                  nativeDemoFlow={nativeDemoFlow}
                   onUpdateField={updateField}
                   onRunSelection={runSelection}
                   onToggleSku={toggleSku}
@@ -1253,7 +1376,35 @@ export function SmartCreationFlow({
                 </Button>
               )}
 
-              {showCreativePanel && displayCampaign.creativePlan && (
+              {nativeVideoFlow &&
+                showCreativePanel &&
+                displayCampaign.creativePlan?.videoCreative &&
+                !creativeConfirmed && (
+                  <NativeVideoCreativePlanPanel
+                    plan={displayCampaign.creativePlan}
+                    status={loading ? "generating" : "ready"}
+                    loading={loading}
+                    onChange={(fields) => void handleVideoCreativeChange(fields)}
+                    onRegenerate={() => void generateCreative()}
+                    onConfirm={confirmCreativePlan}
+                  />
+                )}
+
+              {nativeImageFlow &&
+                showCreativePanel &&
+                displayCampaign.creativePlan?.imageCreative &&
+                !creativeConfirmed && (
+                  <NativeCreativePlanPanel
+                    plan={displayCampaign.creativePlan}
+                    status={loading ? "generating" : "ready"}
+                    loading={loading}
+                    onChange={(fields) => void handleImageCreativeChange(fields)}
+                    onRegenerate={() => void generateCreative()}
+                    onConfirm={confirmCreativePlan}
+                  />
+                )}
+
+              {showCreativePanel && displayCampaign.creativePlan && !nativeDemoFlow && (
                 <CreativeGenerationPanel
                   plan={displayCampaign.creativePlan}
                   loading={loading}
@@ -1263,6 +1414,7 @@ export function SmartCreationFlow({
                 />
               )}
 
+              {!nativeDemoFlow && (
               <StructuredConfigPanel
                 materialType={materialType}
                 values={configValues}
@@ -1271,8 +1423,24 @@ export function SmartCreationFlow({
                 agentFilledFields={agentFilledFields}
                 onSaveTemplate={configEditable ? handleSaveModuleTemplate : undefined}
               />
+              )}
 
-              {campaign?.stage === "creative_review" && (
+              {nativeDemoFlow &&
+                campaign?.stage === "creative_review" &&
+                creativeConfirmed &&
+                !taskSubmitted && (
+                  <PreviewSubmitPanel
+                    singlePreview
+                    materialType={materialType}
+                    previewUrls={previewUrl ? [previewUrl] : []}
+                    loading={loading}
+                    onBackToCreative={() => setCreativeConfirmed(false)}
+                    onRegeneratePreview={() => void regeneratePreview()}
+                    onConfirmSubmit={() => void confirmAndGenerate()}
+                  />
+                )}
+
+              {!nativeDemoFlow && campaign?.stage === "creative_review" && (
                 <Button
                   className="w-full"
                   size="lg"
@@ -1287,7 +1455,7 @@ export function SmartCreationFlow({
             </div>
           )}
 
-          {!showWorkflowPanel && (
+          {!showWorkflowPanel && !nativeDemoFlow && (
             <div className="flex min-h-[320px] flex-col p-6">
               {(campaign?.stage === "generating" || campaign?.stage === "external_review") && (
                 <div className="flex flex-1 flex-col items-center justify-center text-center">

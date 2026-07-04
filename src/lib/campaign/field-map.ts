@@ -1,4 +1,5 @@
 import type { CampaignSnapshot, CreativeBrief, RequirementBrief } from "./types";
+import { applySilentChannelFields, applySilentVideoChannelFields } from "./silent-fields";
 import type { MaterialType } from "@/lib/types";
 
 export type FieldOwner = "operator" | "agent" | "auto";
@@ -56,10 +57,216 @@ export const SELECTION_METHOD_OPTIONS = [
   { value: "批量导入商品 ID", label: "批量导入商品 ID" },
 ];
 
+export const AD_THEME_OPTIONS = [
+  { value: "", label: "请选择" },
+  { value: "节日主题", label: "节日主题" },
+  { value: "日常促销", label: "日常促销" },
+  { value: "新品上市", label: "新品上市" },
+  { value: "达人种草", label: "达人种草" },
+  { value: "福利秒杀", label: "福利秒杀" },
+];
+
+export const CAMPAIGN_GOAL_OPTIONS = [
+  { value: "", label: "请选择" },
+  { value: "拉新引流", label: "拉新引流" },
+  { value: "促进转化", label: "促进转化" },
+  { value: "提升点击", label: "提升点击" },
+  { value: "品牌曝光", label: "品牌曝光" },
+];
+
+export const VISUAL_STYLE_OPTIONS = [
+  { value: "", label: "请选择" },
+  { value: "简约高级", label: "简约高级" },
+  { value: "热闹促销", label: "热闹促销" },
+  { value: "生活化种草", label: "生活化种草" },
+  { value: "国风", label: "国风" },
+  { value: "轻奢", label: "轻奢" },
+  { value: "接地气市井风", label: "接地气市井风" },
+];
+
+export const CONTENT_TONE_OPTIONS = [
+  { value: "", label: "请选择" },
+  { value: "温和种草", label: "温和种草" },
+  { value: "强营销逼单", label: "强营销逼单" },
+  { value: "趣味生活化", label: "趣味生活化" },
+  { value: "专业测评", label: "专业测评" },
+];
+
+export const PRODUCT_DATA_POOL_OPTIONS = [
+  { value: "平台大盘热销池", label: "平台大盘热销池" },
+  { value: "频道权益商品池", label: "频道权益商品池" },
+  { value: "自营商品池", label: "自营商品池" },
+];
+
+export const PICK_METHOD_OPTIONS = [
+  { value: "AI 智能优选", label: "AI 智能优选" },
+  { value: "热度优先", label: "热度优先" },
+  { value: "转化率优先", label: "转化率优先" },
+  { value: "新品优先", label: "新品优先" },
+];
+
+export const SELECTION_COUNT_PRESETS = [
+  { value: "1", label: "1 组" },
+  { value: "3", label: "3 组" },
+  { value: "5", label: "5 组" },
+  { value: "10", label: "10 组" },
+];
+
 function display(value: string | number | boolean | undefined | null, fallback = "待补充"): string {
   if (value === undefined || value === null || value === "") return fallback;
   if (typeof value === "boolean") return value ? "是" : "否";
   return String(value);
+}
+
+function buildImageNativeConfirmFields(
+  requirement: RequirementBrief,
+  agentFilled?: Set<string>
+): CampaignFieldItem[] {
+  const agent = (key: string) => agentFilled?.has(key) ?? false;
+
+  return [
+    {
+      id: "channel",
+      label: "投放渠道",
+      value: display(requirement.channel, ""),
+      owner: "operator",
+      editable: true,
+      fieldKey: "channel",
+      inputType: "select",
+      options: CHANNEL_OPTIONS,
+      agentParsed: agent("channel"),
+    },
+    {
+      id: "media",
+      label: "投放媒体",
+      value: display(requirement.media ?? requirement.platform, ""),
+      owner: "operator",
+      editable: true,
+      fieldKey: "media",
+      inputType: "select",
+      options: MEDIA_OPTIONS,
+      agentParsed: agent("media"),
+      hint: "（尺寸/合规后台自动映射）",
+    },
+    {
+      id: "adTheme",
+      label: "广告主题",
+      value: display(requirement.adTheme, ""),
+      owner: "operator",
+      editable: true,
+      fieldKey: "adTheme",
+      inputType: "select",
+      options: AD_THEME_OPTIONS,
+      agentParsed: agent("adTheme"),
+    },
+    {
+      id: "campaignGoal",
+      label: "投放目标",
+      value: display(requirement.campaignGoal, ""),
+      owner: "operator",
+      editable: true,
+      fieldKey: "campaignGoal",
+      inputType: "select",
+      options: CAMPAIGN_GOAL_OPTIONS,
+      agentParsed: agent("campaignGoal"),
+    },
+    {
+      id: "targetAudience",
+      label: "核心投放人群",
+      value: display(requirement.targetAudience ?? requirement.audience, ""),
+      owner: "operator",
+      editable: true,
+      fieldKey: "targetAudience",
+      placeholder: "年龄/性别/消费层级/使用场景",
+      agentParsed: agent("targetAudience"),
+    },
+    {
+      id: "userPainPoints",
+      label: "用户核心痛点",
+      value: display(requirement.userPainPoints, ""),
+      owner: "operator",
+      editable: true,
+      fieldKey: "userPainPoints",
+      multiline: true,
+      placeholder: "AI 从需求中提炼，用于匹配创意剧情",
+      agentParsed: agent("userPainPoints"),
+    },
+    {
+      id: "coreBenefit",
+      label: "核心利益点",
+      value: display(requirement.coreBenefit, ""),
+      owner: "operator",
+      editable: true,
+      fieldKey: "coreBenefit",
+      placeholder: "优惠券、低价、赠品、限时秒杀等",
+      agentParsed: agent("coreBenefit"),
+    },
+    {
+      id: "visualStyle",
+      label: "整体视觉风格",
+      value: display(requirement.visualStyle, ""),
+      owner: "operator",
+      editable: true,
+      fieldKey: "visualStyle",
+      inputType: "select",
+      options: VISUAL_STYLE_OPTIONS,
+      agentParsed: agent("visualStyle"),
+    },
+    {
+      id: "contentTone",
+      label: "内容调性",
+      value: display(requirement.contentTone, ""),
+      owner: "operator",
+      editable: true,
+      fieldKey: "contentTone",
+      inputType: "select",
+      options: CONTENT_TONE_OPTIONS,
+      agentParsed: agent("contentTone"),
+    },
+  ];
+}
+
+const AUTO_SUBTITLE_OPTIONS = [
+  { value: "开启", label: "开启" },
+  { value: "关闭", label: "关闭" },
+];
+
+const VIDEO_DURATION_OPTIONS = [
+  { value: "15s", label: "15s" },
+  { value: "30s", label: "30s" },
+  { value: "45s", label: "45s" },
+];
+
+function buildVideoNativeConfirmFields(
+  requirement: RequirementBrief,
+  agentFilled?: Set<string>
+): CampaignFieldItem[] {
+  const agent = (key: string) => agentFilled?.has(key) ?? false;
+  return [
+    ...buildImageNativeConfirmFields(requirement, agentFilled),
+    {
+      id: "autoSubtitle",
+      label: "是否自动生成字幕",
+      value: display(requirement.autoSubtitle ?? "开启", ""),
+      owner: "operator",
+      editable: true,
+      fieldKey: "autoSubtitle",
+      inputType: "select",
+      options: AUTO_SUBTITLE_OPTIONS,
+      agentParsed: agent("autoSubtitle"),
+    },
+    {
+      id: "videoDurationTier",
+      label: "视频时长档位",
+      value: display(requirement.videoDurationTier ?? "15s", ""),
+      owner: "operator",
+      editable: true,
+      fieldKey: "videoDurationTier",
+      inputType: "select",
+      options: VIDEO_DURATION_OPTIONS,
+      agentParsed: agent("videoDurationTier"),
+    },
+  ];
 }
 
 function buildBasicInfoFields(
@@ -269,18 +476,26 @@ function autoCompleteFields(materialType: MaterialType): CampaignFieldItem[] {
 export function buildCampaignFieldGroups(
   campaign: CampaignSnapshot,
   materialType: MaterialType,
-  agentFilled?: Set<string>
+  agentFilled?: Set<string>,
+  nativeDemoFlow = false
 ): CampaignFieldGroup[] {
   if (!campaign.requirement) return [];
 
   const { requirement, creative } = campaign;
+  const isVideoNative = nativeDemoFlow && materialType === "video";
   const groups: CampaignFieldGroup[] = [
     {
       id: "basic-info",
-      title: "基础信息",
-      description: "由需求解读自动填充，带 Agent 标识项为 AI 识别；未识别项请手动填写",
+      title: nativeDemoFlow ? "需求确认" : "基础信息",
+      description: nativeDemoFlow
+        ? "AI 已拆解诉求并填入下方字段；渠道尺寸与合规基线已在后台静默映射"
+        : "由需求解读自动填充；未识别项请手动填写",
       owner: "operator",
-      items: buildBasicInfoFields(requirement, materialType, agentFilled),
+      items: nativeDemoFlow
+        ? isVideoNative
+          ? buildVideoNativeConfirmFields(requirement, agentFilled)
+          : buildImageNativeConfirmFields(requirement, agentFilled)
+        : buildBasicInfoFields(requirement, materialType, agentFilled),
     },
   ];
 
@@ -298,24 +513,26 @@ export function buildCampaignFieldGroups(
     });
   }
 
-  const creativeItems = buildCreativeFields(creative, materialType);
-  if (creativeItems.length > 0) {
+  if (!nativeDemoFlow) {
+    const creativeItems = buildCreativeFields(creative, materialType);
+    if (creativeItems.length > 0) {
+      groups.push({
+        id: "creative-plan",
+        title: "创意方案",
+        description: "基于需求与选品生成，可在左侧对话微调",
+        owner: "agent",
+        items: creativeItems,
+      });
+    }
+
     groups.push({
-      id: "creative-plan",
-      title: "创意方案",
-      description: "基于需求与选品生成，可在左侧对话微调",
-      owner: "agent",
-      items: creativeItems,
+      id: "auto",
+      title: "确认后 Agent 自动完成",
+      description: "创意与需求确认完成后，以下步骤自动执行",
+      owner: "auto",
+      items: autoCompleteFields(materialType),
     });
   }
-
-  groups.push({
-    id: "auto",
-    title: "确认后 Agent 自动完成",
-    description: "创意与需求确认完成后，以下步骤自动执行",
-    owner: "auto",
-    items: autoCompleteFields(materialType),
-  });
 
   return groups;
 }
@@ -348,6 +565,20 @@ export function applyFieldUpdates(
     "specialConstraints",
     "productSelectionMethod",
     "selectionStrategy",
+    "adTheme",
+    "campaignGoal",
+    "targetAudience",
+    "userPainPoints",
+    "coreBenefit",
+    "contentTone",
+    "autoSubtitle",
+    "videoDurationTier",
+    "productDataPool",
+    "categoryName",
+    "categoryId",
+    "pickMethod",
+    "selectionCoreStrategy",
+    "hasBenefitRights",
   ];
 
   for (const key of reqKeys) {
@@ -359,6 +590,15 @@ export function applyFieldUpdates(
 
   if ("media" in updates && updates.media) {
     nextReq.platform = updates.media;
+    if (nextReq.materialType === "video") {
+      Object.assign(nextReq, applySilentVideoChannelFields(nextReq, updates.media));
+    } else {
+      Object.assign(nextReq, applySilentChannelFields(nextReq, updates.media));
+    }
+  }
+
+  if ("targetAudience" in updates && updates.targetAudience) {
+    nextReq.audience = updates.targetAudience;
   }
 
   if ("creativesPerProduct" in updates) {

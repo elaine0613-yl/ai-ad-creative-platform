@@ -53,7 +53,7 @@ export function StructuredConfigPanel({
             {materialType === "image" ? "图片创作配置面板" : "视频创作配置面板"}
           </h2>
           <p className="mt-0.5 text-xs text-gray-500">
-            支持手动输入、下拉选择、素材库选取；带 Agent 标识为 AI 自动填充
+            支持手动输入、下拉选择、素材库选取
           </p>
         </div>
       </div>
