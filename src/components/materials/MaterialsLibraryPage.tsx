@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/Input";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Tabs } from "@/components/ui/Tabs";
+import { FilterField, FilterSelect } from "@/components/common/FilterSelect";
 import { MaterialDetailModal } from "@/components/materials/MaterialDetailModal";
 import type {
   ArchiveMaterial,
@@ -211,188 +212,133 @@ export function MaterialsLibraryPage() {
       <div className="shrink-0 border-b border-gray-200 bg-white px-6 py-3">
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-end">
-            <div className="relative min-w-0 flex-1 xl:max-w-xs">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <FilterField label="关键词" className="min-w-0 flex-1 xl:max-w-xs">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Input
+                  placeholder="名称、任务ID、商品、卖点…"
+                  className="pl-9"
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
+                />
+              </div>
+            </FilterField>
+            <FilterField label="任务 ID" className="xl:w-36">
               <Input
-                placeholder="素材名称、任务ID、商品、卖点…"
-                className="pl-9"
-                value={search}
+                placeholder="输入 ID"
+                value={taskId}
                 onChange={(e) => {
-                  setSearch(e.target.value);
+                  setTaskId(e.target.value);
                   setPage(1);
                 }}
               />
-            </div>
-            <Input
-              placeholder="产出任务 ID"
-              className="xl:w-36"
-              value={taskId}
-              onChange={(e) => {
-                setTaskId(e.target.value);
-                setPage(1);
-              }}
-            />
-            <select
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+            </FilterField>
+            <FilterSelect
+              label="生成模式"
               value={generateMode}
-              onChange={(e) => setGenerateMode(e.target.value as GenerateMode | "all")}
-            >
-              {GENERATE_MODE_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-            <select
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+              onChange={(v) => setGenerateMode(v as GenerateMode | "all")}
+              options={GENERATE_MODE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+            />
+            <FilterSelect
+              label="渠道"
               value={channel}
-              onChange={(e) => setChannel(e.target.value)}
-            >
-              {CHANNEL_OPTIONS.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-            <select
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+              onChange={setChannel}
+              options={CHANNEL_OPTIONS.map((c) => ({ value: c.value, label: c.label }))}
+            />
+            <FilterSelect
+              label="品牌"
               value={brand}
-              onChange={(e) => setBrand(e.target.value)}
-            >
-              {BRAND_OPTIONS.map((b) => (
-                <option key={b.value} value={b.value}>
-                  {b.label}
-                </option>
-              ))}
-            </select>
-            <select
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+              onChange={setBrand}
+              options={BRAND_OPTIONS.map((b) => ({ value: b.value, label: b.label }))}
+            />
+            <FilterSelect
+              label="类目"
               value={industry}
-              onChange={(e) => setIndustry(e.target.value)}
-            >
-              {INDUSTRY_OPTIONS.map((i) => (
-                <option key={i.value} value={i.value}>
-                  {i.label}
-                </option>
-              ))}
-            </select>
+              onChange={setIndustry}
+              options={INDUSTRY_OPTIONS.map((i) => ({ value: i.value, label: i.label }))}
+            />
           </div>
-          <div className="flex flex-wrap gap-2">
-            <select
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+          <div className="flex flex-wrap items-end gap-2">
+            <FilterSelect
+              label="生成时间"
               value={datePreset}
-              onChange={(e) => setDatePreset(e.target.value as typeof datePreset)}
-            >
-              <option value="all">全部时间</option>
-              <option value="1d">近 1 天</option>
-              <option value="7d">近 7 天</option>
-              <option value="30d">近 30 天</option>
-            </select>
-            <select
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+              onChange={(v) => setDatePreset(v as typeof datePreset)}
+              options={[
+                { value: "all", label: "" },
+                { value: "1d", label: "近 1 天" },
+                { value: "7d", label: "近 7 天" },
+                { value: "30d", label: "近 30 天" },
+              ]}
+            />
+            <FilterSelect
+              label="状态"
               value={status}
-              onChange={(e) => setStatus(e.target.value as ArchiveMaterialStatus | "all")}
-            >
-              {STATUS_OPTIONS.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-            <select
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+              onChange={(v) => setStatus(v as ArchiveMaterialStatus | "all")}
+              options={STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label }))}
+            />
+            <FilterSelect
+              label="AI 标签"
               value={aiTag}
-              onChange={(e) => setAiTag(e.target.value)}
-            >
-              {AI_TAG_OPTIONS.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
+              onChange={setAiTag}
+              options={AI_TAG_OPTIONS.map((t) => ({ value: t.value, label: t.label }))}
+            />
             {partition === "image" ? (
               <>
-                <select
-                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+                <FilterSelect
+                  label="画布尺寸"
                   value={aspectRatio}
-                  onChange={(e) => setAspectRatio(e.target.value as ImageAspectRatio | "all")}
-                >
-                  {IMAGE_ASPECT_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+                  onChange={(v) => setAspectRatio(v as ImageAspectRatio | "all")}
+                  options={IMAGE_ASPECT_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+                />
+                <FilterSelect
+                  label="视觉风格"
                   value={visualStyle}
-                  onChange={(e) => setVisualStyle(e.target.value as ImageVisualStyle | "all")}
-                >
-                  {IMAGE_STYLE_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+                  onChange={(v) => setVisualStyle(v as ImageVisualStyle | "all")}
+                  options={IMAGE_STYLE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+                />
+                <FilterSelect
+                  label="画面类型"
                   value={sceneType}
-                  onChange={(e) => setSceneType(e.target.value as ImageSceneType | "all")}
-                >
-                  {IMAGE_SCENE_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => setSceneType(v as ImageSceneType | "all")}
+                  options={IMAGE_SCENE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+                />
               </>
             ) : (
               <>
-                <select
-                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+                <FilterSelect
+                  label="视频时长"
                   value={durationTier}
-                  onChange={(e) => setDurationTier(e.target.value as VideoDurationTier | "all")}
-                >
-                  {VIDEO_DURATION_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+                  onChange={(v) => setDurationTier(v as VideoDurationTier | "all")}
+                  options={VIDEO_DURATION_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+                />
+                <FilterSelect
+                  label="视频节奏"
                   value={pace}
-                  onChange={(e) => setPace(e.target.value as VideoPace | "all")}
-                >
-                  {VIDEO_PACE_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+                  onChange={(v) => setPace(v as VideoPace | "all")}
+                  options={VIDEO_PACE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+                />
+                <FilterSelect
+                  label="字幕"
                   value={hasSubtitle}
-                  onChange={(e) => setHasSubtitle(e.target.value as typeof hasSubtitle)}
-                >
-                  <option value="all">字幕配置</option>
-                  <option value="yes">带字幕</option>
-                  <option value="no">无字幕</option>
-                </select>
-                <select
-                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+                  onChange={(v) => setHasSubtitle(v as typeof hasSubtitle)}
+                  options={[
+                    { value: "all", label: "" },
+                    { value: "yes", label: "带字幕" },
+                    { value: "no", label: "无字幕" },
+                  ]}
+                />
+                <FilterSelect
+                  label="视频类型"
                   value={videoType}
-                  onChange={(e) => setVideoType(e.target.value as VideoType | "all")}
-                >
-                  {VIDEO_TYPE_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => setVideoType(v as VideoType | "all")}
+                  options={VIDEO_TYPE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+                />
               </>
             )}
-            <span className="self-center text-xs text-gray-400">共 {filtered.length} 条成品素材</span>
+            <span className="pb-2 text-xs text-gray-400">共 {filtered.length} 条</span>
           </div>
         </div>
       </div>

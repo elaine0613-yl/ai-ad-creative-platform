@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI 广告素材生成平台</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{--brand-50:#eef2ff;--brand-600:#4f46e5;--brand-700:#4338ca;--gray-50:#f9fafb;--gray-100:#f3f4f6;--gray-200:#e5e7eb;--gray-300:#d1d5db;--gray-400:#9ca3af;--gray-500:#6b7280;--gray-600:#4b5563;--gray-700:#374151;--gray-900:#111827;--green-50:#f0fdf4;--green-600:#16a34a;--red-50:#fef2f2;--red-600:#dc2626;--amber-50:#fffbeb;--amber-600:#d97706;--blue-50:#eff6ff;--blue-600:#2563eb;--sidebar-w:240px}
+    html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;font-size:14px;color:var(--gray-900);background:var(--gray-50)}
+    button,input,select,textarea{font:inherit}
+    a{color:var(--brand-600);text-decoration:none}
+    .app{display:flex;height:100vh;overflow:hidden}
+    .sidebar{width:var(--sidebar-w);flex-shrink:0;background:#fff;border-right:1px solid var(--gray-200);display:flex;flex-direction:column}
+    .sidebar-logo{padding:18px 18px 10px;font-size:15px;font-weight:700;color:var(--brand-700)}
+    .sidebar-logo span{display:block;font-size:11px;font-weight:400;color:var(--gray-400);margin-top:3px;line-height:1.4}
+    .nav{flex:1;padding:6px 10px;overflow-y:auto}
+    .nav-item{display:flex;align-items:center;gap:9px;width:100%;padding:9px 11px;border:none;background:none;border-radius:8px;color:var(--gray-600);cursor:pointer;text-align:left;margin-bottom:1px;font-size:13px}
+    .nav-item:hover{background:var(--gray-100);color:var(--gray-900)}
+    .nav-item.active{background:var(--brand-50);color:var(--brand-700);font-weight:600}
+    .nav-item svg{width:17px;height:17px;flex-shrink:0;opacity:.75}
+    .main{flex:1;display:flex;flex-direction:column;min-width:0;background:#f4f4f5}
+    .page{display:none;flex:1;flex-direction:column;min-height:0}
+    .page.active{display:flex}
+    .page-header{flex-shrink:0;background:#fff;border-bottom:1px solid var(--gray-200)}
+    .page-header-top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:14px 22px}
+    .page-header h1{font-size:19px;font-weight:600}
+    .tabs{display:flex;gap:2px;border-bottom:1px solid var(--gray-200);padding:0 22px;flex-wrap:wrap}
+    .tab{position:relative;padding:9px 14px;border:none;background:none;color:var(--gray-500);font-size:13px;font-weight:500;cursor:pointer}
+    .tab.active{color:var(--brand-600)}
+    .tab.active::after{content:"";position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--brand-600)}
+    .tab .badge{margin-left:5px;padding:1px 6px;border-radius:999px;background:var(--gray-100);font-size:10px;color:var(--gray-500)}
+    .filters{flex-shrink:0;background:#fff;border-bottom:1px solid var(--gray-200);padding:11px 22px}
+    .filters-row{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+    .filters-row+.filters-row{margin-top:10px}
+    .filter-field{display:flex;flex-direction:column;gap:3px;min-width:110px}
+    .filter-field.flex-1{flex:1;min-width:180px;max-width:260px}
+    .filter-field label{font-size:11px;color:var(--gray-500)}
+    .filter-field input,.filter-field select{padding:7px 10px;border:1px solid var(--gray-300);border-radius:7px;background:#fff;font-size:12px;width:100%}
+    .search-wrap{position:relative}
+    .search-wrap svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--gray-400)}
+    .search-wrap input{padding-left:30px}
+    .count-hint{font-size:11px;color:var(--gray-400);padding-bottom:7px}
+    .list-area{flex:1;overflow-y:auto;padding:20px 22px 90px}
+    .card-list{display:flex;flex-direction:column;gap:10px}
+    .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px}
+    .tag{display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px}
+    .tag-brand{background:var(--brand-50);color:var(--brand-700)}
+    .tag-blue{background:var(--blue-50);color:var(--blue-600)}
+    .tag-green{background:var(--green-50);color:var(--green-600)}
+    .tag-gray{background:var(--gray-100);color:var(--gray-600)}
+    .tag-red{background:var(--red-50);color:var(--red-600)}
+    .tag-amber{background:var(--amber-50);color:var(--amber-600)}
+    .tag-purple{background:#faf5ff;color:#9333ea}
+    .btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:7px;border:1px solid transparent;font-size:12px;font-weight:500;cursor:pointer}
+    .btn-primary{background:var(--brand-600);color:#fff}
+    .btn-primary:hover{background:var(--brand-700)}
+    .btn-outline{background:#fff;border-color:var(--gray-300);color:var(--gray-700)}
+    .btn-ghost{background:none;border:none;color:var(--gray-600);padding:5px 8px}
+    .btn-sm{padding:5px 9px;font-size:11px}
+    .btn:disabled{opacity:.45;cursor:not-allowed}
+    .bottom-bar{position:fixed;bottom:0;left:var(--sidebar-w);right:0;z-index:40;background:rgba(255,255,255,.96);backdrop-filter:blur(6px);border-top:1px solid var(--gray-200);padding:10px 22px;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+    .bottom-bar .spacer{flex:1}
+    .empty{text-align:center;padding:50px 20px;color:var(--gray-400)}
+    .empty h3{font-size:14px;color:var(--gray-600);margin-bottom:6px}
+    .row-card{background:#fff;border:1px solid var(--gray-200);border-radius:11px;padding:14px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:10px;cursor:pointer}
+    .row-card:hover{border-color:var(--brand-600);box-shadow:0 1px 4px rgba(0,0,0,.04)}
+    .material-card{background:#fff;border:1px solid var(--gray-200);border-radius:11px;overflow:hidden;cursor:pointer;position:relative}
+    .material-card:hover{box-shadow:0 3px 10px rgba(0,0,0,.07)}
+    .material-card .preview{display:flex;align-items:center;justify-content:center;aspect-ratio:1}
+    .material-card.video .preview{aspect-ratio:9/16;max-height:200px}
+    .material-card .body{padding:10px}
+    .material-card .name{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .material-card .meta{font-size:10px;color:var(--gray-500);margin-top:3px}
+    .knowledge-card{background:#fff;border:1px solid var(--gray-200);border-radius:11px;padding:14px;display:flex;gap:10px}
+    .knowledge-card h3{font-size:13px;font-weight:500}
+    .knowledge-card .kid{font-family:monospace;font-size:10px;color:var(--gray-400)}
+    .knowledge-card .summary{font-size:12px;color:var(--gray-600);margin-top:6px;line-height:1.45}
+    .sidebar-panel{width:210px;flex-shrink:0;border-right:1px solid var(--gray-200);background:rgba(249,250,251,.85);padding:14px;overflow-y:auto}
+    .sidebar-panel-btn{display:block;width:100%;text-align:left;padding:7px 10px;border:none;background:none;border-radius:7px;font-size:12px;color:var(--gray-600);cursor:pointer;margin-bottom:3px}
+    .sidebar-panel-btn.active{background:var(--brand-50);color:var(--brand-700);font-weight:600}
+    .content-split{flex:1;display:flex;min-height:0;overflow:hidden}
+    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;align-items:center;justify-content:center;padding:20px}
+    .modal-overlay.open{display:flex}
+    .modal{background:#fff;border-radius:14px;max-width:860px;width:100%;max-height:88vh;overflow:hidden;display:flex;flex-direction:column}
+    .modal-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--gray-100)}
+    .modal-header h2{font-size:15px;font-weight:600}
+    .modal-close{border:none;background:none;font-size:22px;color:var(--gray-400);cursor:pointer}
+    .modal-body{padding:18px;overflow-y:auto;flex:1;font-size:13px}
+    .metrics-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:20px}
+    .metric-card{background:#fff;border:1px solid var(--gray-200);border-radius:10px;padding:14px}
+    .metric-card .label{font-size:11px;color:var(--gray-500)}
+    .metric-card .value{font-size:22px;font-weight:600;margin-top:4px;color:var(--gray-900)}
+    .metric-card .sub{font-size:10px;color:var(--gray-400);margin-top:2px}
+    table.data-table{width:100%;border-collapse:collapse;font-size:12px;background:#fff;border-radius:10px;overflow:hidden;border:1px solid var(--gray-200)}
+    table.data-table th,table.data-table td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--gray-100)}
+    table.data-table th{background:var(--gray-50);color:var(--gray-500);font-weight:500;font-size:11px}
+    table.data-table tr:hover td{background:var(--gray-50)}
+    /* 生成页 */
+    .create-page{flex:1;display:flex;flex-direction:column;min-height:0}
+    .mode-bar{padding:10px 22px;background:#fff;border-bottom:1px solid var(--gray-200);display:flex;gap:6px}
+    .mode-bar button{padding:7px 16px;border:none;background:var(--gray-100);border-radius:8px;font-size:12px;cursor:pointer;color:var(--gray-600)}
+    .mode-bar button.active{background:#fff;color:var(--brand-700);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+    .stage-bar{padding:8px 22px;background:#fff;border-bottom:1px solid var(--gray-100);display:flex;gap:6px;flex-wrap:wrap}
+    .stage-pill{padding:4px 12px;border-radius:999px;font-size:11px;border:1px solid var(--gray-200);color:var(--gray-500);background:#fff}
+    .stage-pill.done{background:var(--green-50);border-color:#bbf7d0;color:var(--green-600)}
+    .stage-pill.current{background:var(--brand-50);border-color:#c7d2fe;color:var(--brand-700);font-weight:600}
+    .create-split{flex:1;display:flex;min-height:0;overflow:hidden}
+    .agent-panel{width:42%;min-width:300px;border-right:1px solid var(--gray-200);background:#fff;display:flex;flex-direction:column}
+    .agent-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+    .msg{max-width:92%;padding:10px 12px;border-radius:10px;font-size:12px;line-height:1.55}
+    .msg-agent{background:var(--gray-100);color:var(--gray-800);align-self:flex-start;border-bottom-left-radius:2px}
+    .msg-user{background:var(--brand-600);color:#fff;align-self:flex-end;border-bottom-right-radius:2px}
+    .agent-input{border-top:1px solid var(--gray-100);padding:12px;display:flex;gap:8px}
+    .agent-input input{flex:1;padding:8px 12px;border:1px solid var(--gray-300);border-radius:8px;font-size:12px}
+    .plan-panel{flex:1;overflow-y:auto;padding:16px 18px;background:#fafafa}
+    .form-section{background:#fff;border:1px solid var(--gray-200);border-radius:10px;padding:14px;margin-bottom:12px}
+    .form-section h3{font-size:13px;font-weight:600;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--gray-100)}
+    .section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--gray-100)}
+    .section-head h3{font-size:13px;font-weight:600;margin:0;padding:0;border:none}
+    .shot-item-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+    .shot-item-head strong{font-size:12px}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .form-grid .full{grid-column:1/-1}
+    .field label{display:block;font-size:11px;color:var(--gray-500);margin-bottom:3px}
+    .field input,.field select,.field textarea{width:100%;padding:7px 10px;border:1px solid var(--gray-300);border-radius:6px;font-size:12px}
+    .field textarea{min-height:60px;resize:vertical}
+    .field .readonly{background:var(--gray-50);color:var(--gray-600)}
+    .product-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-top:8px}
+    .product-card{border:1px solid var(--gray-200);border-radius:8px;padding:10px;font-size:11px;background:var(--gray-50)}
+    .product-card .title{font-weight:500;margin-bottom:4px}
+    .product-card .reason{color:var(--gray-500);font-size:10px;margin-top:4px}
+    .create-footer{padding:12px 22px;background:#fff;border-top:1px solid var(--gray-200);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .collapse-toggle{font-size:11px;color:var(--brand-600);cursor:pointer;margin-bottom:8px;display:inline-block}
+    .shot-list{margin-top:8px}
+    .shot-item{border:1px solid var(--gray-100);border-radius:8px;padding:10px;margin-bottom:8px;font-size:11px;background:var(--gray-50)}
+    .replicate-zone{border:2px dashed var(--gray-300);border-radius:10px;padding:24px;text-align:center;color:var(--gray-500);font-size:12px;margin-bottom:12px;background:#fff}
+    @media(max-width:900px){.create-split{flex-direction:column}.agent-panel{width:100%;max-height:40vh}.sidebar-panel{display:none}.bottom-bar{left:0}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="sidebar-logo">AI 广告素材生成平台</div>
+    <nav class="nav" id="nav"></nav>
+  </aside>
+  <main class="main" id="main"></main>
+</div>
+<div class="modal-overlay" id="modal"><div class="modal" onclick="event.stopPropagation()"><div class="modal-header"><h2 id="modal-title">详情</h2><button class="modal-close" id="modal-close">&times;</button></div><div class="modal-body" id="modal-body"></div></div></div>
+<script>
+(function(){
+"use strict";
+
+const CHANNELS={all:"不限",feed:"信息流",dsp:"DSP",seed:"种草",vendor:"厂商"};
+const MEDIAS={all:"不限",feed:{douyin:"抖音",kuaishou:"快手"},dsp:{tencent:"腾讯广告"},seed:{xiaohongshu:"小红书"},vendor:{huawei:"华为"}};
+const MATERIAL_STATUS={stored:"已入库待投放",exported:"已导出待投放",delivering:"投放中",excellent:"表现优良",archived:"已下线归档"};
+const TASK_TYPE={preview:"预览任务",batch:"批量任务"};
+const TASK_PROGRESS={queued:"排队中",generating:"生成中",done:"生成完成",failed:"生成失败",pending_audit:"待审核"};
+const AUDIT_STATUS={pending:"待审核",reviewing:"审核中",passed:"通过",rejected:"驳回"};
+
+const IMAGE_KB=[
+  {id:"channel",label:"频道库",fields:"频道名称、频道 ID、频道介绍、页面图片/链接"},
+  {id:"product",label:"商品库",fields:"类目、类目 ID、商品 ID、标题、描述、图片、链接、标签"},
+  {id:"brand",label:"品牌资产库",fields:"品牌名称、品牌 ID、品牌图片、适合展示位、备注"},
+  {id:"fengti",label:"风提库",fields:"风提名称、风提 ID、风提内容、适用场景"},
+  {id:"font",label:"字体库",fields:"字体名称、字体 ID、字体包、备注"},
+  {id:"tag",label:"标签库",fields:"标签名称、标签 ID、文案内容、标签类型、备注"},
+];
+const VIDEO_KB=[
+  ...IMAGE_KB.filter(k=>["channel","product","brand","fengti","tag"].includes(k.id)),
+  {id:"avatar",label:"数字人库",fields:"名称、ID、形象、适用场景、口播风格、备注"},
+  {id:"subtitle",label:"字幕模板库",fields:"模板名称、ID、样式预览、适用媒体、适合位置、备注"},
+  {id:"voice",label:"音色库",fields:"音色名称、ID、性别/年龄感、语速、情绪、试听、备注"},
+  {id:"bgm",label:"BGM 库",fields:"BGM 名称、ID、音频、节奏、情绪、适用场景、版权备注"},
+  {id:"transition",label:"转场库",fields:"转场名称、ID、效果预览、适用镜头类型、备注"},
+  {id:"firstframe",label:"首帧库",fields:"首帧名称、ID、预览、适用风格、适用媒体、备注"},
+  {id:"lastframe",label:"尾帧库",fields:"尾帧名称、ID、预览、CTA 类型、适用媒体、备注"},
+];
+
+const NAV=[
+  {id:"image-create",label:"图片素材生成"},
+  {id:"video-create",label:"视频素材生成"},
+  {id:"task-progress",label:"任务进度"},
+  {id:"audit",label:"审核管理"},
+  {id:"materials",label:"素材库"},
+  {id:"knowledge",label:"知识库"},
+  {id:"material-data",label:"素材数据"},
+  {id:"account",label:"账号管理"},
+];
+
+const STAGES=["demand","selection","creative","preview","batch"];
+const STAGE_LABELS={demand:"需求理解确认",selection:"智能选品确认",creative:"创意方案确认",preview:"预览素材确认",batch:"批量任务确认"};
+const SHOT_GOALS=["Hook","玩法","利益点","CTA"];
+
+function getDefaultShots(){
+  return[
+    {duration:"0-2s",goal:"Hook",visual:"中景生活场景",subtitle:"还在原价买？",voiceover:"你是不是还在原价买东西？"},
+    {duration:"2-8s",goal:"玩法",visual:"近景商品展示",subtitle:"领券立减20",voiceover:"先领券再下单，立减20元"},
+    {duration:"8-15s",goal:"CTA",visual:"福利收尾",subtitle:"限时有效",voiceover:"点击链接，马上领取"},
+  ];
+}
+
+const state={
+  page:"image-create",
+  role:"employee",
+  image:{mode:"native",stage:"demand",demandAnalyzed:false,demandSummary:null,messages:[{role:"agent",text:"你好，我是素材创作 Agent。请用自然语言描述本次图片投放诉求，我会先做业务层理解总结，待你确认后再进入选品与创意方案。"}]},
+  video:{mode:"native",stage:"demand",demandAnalyzed:false,demandSummary:null,shots:null,shotsCollapsed:false,messages:[{role:"agent",text:"你好，我是视频创作 Agent。请描述本次视频投放目标、渠道与商品范围，我会拆解 Hook/玩法/利益点/CTA 结构，并生成分镜脚本供你确认。"}]},
+  knowledge:{partition:"image",subLib:"all",search:"",creator:"",created:"",expire:""},
+  materials:{partition:"image",search:"",status:"all"},
+  tasks:{filter:"all"},
+  audit:{status:"all",search:""},
+  data:{type:"all",channel:"all",media:"all",date:"7d"},
+};
+
+const MOCK_KNOWLEDGE=[
+  {id:"K001",lib:"channel",partition:"image",name:"省钱福利频道",creator:"运营A",created:"2026-05-01",expire:"2099-12-31",summary:"频道 ID CH-001，主打优惠感心智"},
+  {id:"K002",lib:"brand",partition:"image",name:"平台主品牌视觉包",creator:"品牌组",created:"2026-03-15",expire:"2099-12-31",summary:"品牌 ID BR-001，左上/右下展示位规范"},
+  {id:"K003",lib:"fengti",partition:"image",name:"促销风提-限时优惠",creator:"运营B",created:"2026-06-01",expire:"2027-06-01",summary:"适用信息流促销场景"},
+  {id:"V001",lib:"avatar",partition:"video",name:"邻家姐姐数字人",creator:"运营A",created:"2026-04-20",expire:"2099-12-31",summary:"口播风格接地气，适用食品/日用"},
+  {id:"V002",lib:"bgm",partition:"video",name:"快节奏促销 BGM",creator:"运营C",created:"2026-05-10",expire:"2099-12-31",summary:"120BPM，适用 15s 福利快剪"},
+  {id:"V003",lib:"subtitle",partition:"video",name:"竖版底部居中字幕模板",creator:"设计组",created:"2026-02-01",expire:"2099-12-31",summary:"适用抖音/快手竖版"},
+];
+
+const MOCK_MATERIALS=[
+  {id:"M-I-001",partition:"image",name:"6月热门商品-信息流外投图",channel:"feed",media:"抖音",status:"delivering",taskId:"T-B-001",creator:"运营A",created:"2026-06-18",color:"#FEE2E2"},
+  {id:"M-I-002",partition:"image",name:"频道导流-种草方图",channel:"seed",media:"小红书",status:"excellent",taskId:"T-B-002",creator:"运营B",created:"2026-06-15",color:"#DBEAFE"},
+  {id:"M-I-003",partition:"image",name:"新客拉新-促销海报",channel:"feed",media:"快手",status:"stored",taskId:"T-B-003",creator:"运营A",created:"2026-06-20",color:"#D1FAE5"},
+  {id:"M-V-001",partition:"video",name:"15s 竖版福利短视频",channel:"feed",media:"抖音",status:"exported",taskId:"T-B-101",creator:"运营C",created:"2026-06-17",color:"#FEF3C7"},
+  {id:"M-V-002",partition:"video",name:"30s 种草剧情视频",channel:"seed",media:"小红书",status:"delivering",taskId:"T-B-102",creator:"运营B",created:"2026-06-14",color:"#F3E8FF"},
+];
+
+const MOCK_TASKS=[
+  {id:"T-P-001",name:"6月热门商品-图片预览",type:"preview",matType:"image",initiator:"运营A",time:"2026-06-20 10:30",count:1,progress:"done",note:"预览已通过，可开始批量任务"},
+  {id:"T-B-001",name:"6月热门商品-图片批量",type:"batch",matType:"image",initiator:"运营A",time:"2026-06-20 11:00",count:10,progress:"generating",note:"生成中 6/10"},
+  {id:"T-P-101",name:"福利短视频-预览",type:"preview",matType:"video",initiator:"运营C",time:"2026-06-19 15:20",count:1,progress:"pending_audit",note:"预览已生成，待提交审核"},
+  {id:"T-B-101",name:"频道玩法-视频批量",type:"batch",matType:"video",initiator:"运营B",time:"2026-06-18 09:00",count:5,progress:"failed",note:"2 个素材生成失败，请返回修改方案"},
+];
+
+const MOCK_AUDIT=[
+  {taskId:"T-B-001",name:"6月热门商品-图片批量",count:10,flow:"标准广告审核流",status:"reviewing",initiator:"运营A",time:"2026-06-20 12:00",items:[{id:"M-I-001",status:"passed"},{id:"M-I-002",status:"passed"},{id:"M-I-003",status:"pending"}]},
+  {taskId:"T-B-101",name:"频道玩法-视频批量",count:5,flow:"视频专项审核流",status:"pending",initiator:"运营B",time:"2026-06-19 16:00",items:[{id:"M-V-001",status:"pending"},{id:"M-V-002",status:"pending"}]},
+  {taskId:"T-B-002",name:"种草方图批量",count:8,flow:"标准广告审核流",status:"passed",initiator:"运营B",time:"2026-06-15 14:00",items:[]},
+];
+
+const MOCK_DATA_SUMMARY={
+  image:{adoption:"68%",runRate:"42%",ctr:"3.2%",cost:"¥128,400",exposure:"4.02M",clicks:"128K",cpa1:"¥18.5",cpa2:"¥24.2",cpa3:"¥31.0",cpaAll:"¥22.8"},
+  video:{adoption:"55%",runRate:"38%",ctr:"2.8%",cost:"¥86,200",exposure:"2.15M",clicks:"60K",cpa1:"¥22.1",cpa2:"¥28.6",cpa3:"¥35.4",cpaAll:"¥26.3"},
+};
+
+const MOCK_DATA_ROWS=[
+  {date:"2026-06-20",id:"M-I-001",type:"图片",channel:"信息流",media:"抖音",cost:"¥12,400",exposure:"420K",click:"13.4K",ctr:"3.19%",cpa1:"¥17.2",run:"是"},
+  {date:"2026-06-19",id:"M-V-001",type:"视频",channel:"信息流",media:"抖音",cost:"¥8,600",exposure:"280K",click:"7.8K",ctr:"2.79%",cpa1:"¥21.5",run:"是"},
+  {date:"2026-06-18",id:"M-I-002",type:"图片",channel:"种草",media:"小红书",cost:"¥5,200",exposure:"190K",click:"6.1K",ctr:"3.21%",cpa1:"¥19.8",run:"否"},
+];
+
+const MOCK_ACCOUNTS=[
+  {name:"张三",id:"E001",role:"管理员",org:"增长投放部",log:"2026-06-20 登录"},
+  {name:"李四",id:"E002",role:"正式员工",org:"增长投放部",log:"2026-06-19 导出素材"},
+  {name:"代理商A",id:"A001",role:"代理商",org:"XX传媒",log:"2026-06-18 下载 5 条"},
+];
+
+function esc(s){return s==null?"":String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+function filterSelect(label,id,val,opts,cls){return`<div class="filter-field${cls||""}"><label>${esc(label)}</label><select id="${id}">${opts.map(o=>`<option value="${esc(o.v)}"${o.v===val?" selected":""}>${esc(o.v==="all"?"不限":o.l)}</option>`).join("")}</select></div>`}
+function filterInput(label,id,val,placeholder){return`<div class="filter-field"><label>${esc(label)}</label><input id="${id}" placeholder="${esc(placeholder||"")}" value="${esc(val)}"/></div>`}
+function filterDate(label,id,val){return`<div class="filter-field"><label>${esc(label)}</label><input type="date" id="${id}" value="${esc(val)}"/></div>`}
+function openModal(t,h){document.getElementById("modal-title").textContent=t;document.getElementById("modal-body").innerHTML=h;document.getElementById("modal").classList.add("open")}
+function closeModal(){document.getElementById("modal").classList.remove("open")}
+document.getElementById("modal-close").onclick=closeModal;
+document.getElementById("modal").onclick=closeModal;
+
+function renderNav(){
+  document.getElementById("nav").innerHTML=NAV.map(n=>`<button class="nav-item${state.page===n.id?" active":""}" data-page="${n.id}">${esc(n.label)}</button>`).join("");
+  document.querySelectorAll(".nav-item").forEach(b=>b.onclick=()=>{state.page=b.dataset.page;render()});
+}
+
+function field(label,val,ro){return`<div class="field"><label>${esc(label)}</label><input class="${ro?"readonly":""}" value="${esc(val)}" ${ro?"readonly":""}/></div>`}
+function selectField(label,val,opts){return`<div class="field"><label>${esc(label)}</label><select>${opts.map(o=>`<option${o===val?" selected":""}>${esc(o)}</option>`).join("")}</select></div>`}
+
+function analyzeDemand(text,isVideo){
+  const t=text.trim();
+  const wantsVideo=/视频|短视频|竖版|分镜|口播|BGM/.test(t);
+  const wantsImage=/图片|海报|方图|banner|Banner|外投图/.test(t);
+  const matType=wantsVideo&&!wantsImage?"视频":wantsImage&&!wantsVideo?"图片":isVideo?"视频":"图片";
+  const countMatch=t.match(/(\d+)\s*个/);
+  const count=countMatch?countMatch[1]:null;
+  const isShortVideo=/短视频|抖音|快手|竖版/.test(t);
+  const isSeed=/种草|小红书/.test(t);
+  const isPromo=/优惠|福利|低价|券|促销|省钱/.test(t);
+  const isChannel=/频道/.test(t);
+  const hasItemId=/item\s*id|商品\s*id|指定商品|SKU/i.test(t);
+  const media=isShortVideo?"短视频媒体（系统将自动匹配竖版尺寸）":isSeed?"种草媒体（系统将自动匹配方图/竖版尺寸）":/媒体|渠道/.test(t)?"将根据你的描述进一步匹配":"待确认具体媒体";
+  const goal=isPromo?"优惠感心智 + 转化点击":/拉新|新客/.test(t)?"拉新获客":/促活|活跃/.test(t)?"用户促活":"待进一步确认投放目标";
+  const audience=isPromo?"价格敏感、优惠偏好人群":/新用户|新客/.test(t)?"新用户人群":"待确认目标人群";
+  const benefit=isPromo?"省钱、低价感、福利感":/品质|高端/.test(t)?"品质感、实用价值":"待确认核心利益点";
+  const creative=matType==="视频"?(isPromo?"商品展示 + 福利权益讲解":/剧情|种草/.test(t)?"场景种草 + 剧情短片":"待确认视频创意方向"):(isPromo?"商品展示 + 对比分析":/模特|人物/.test(t)?"人物展示 + 场景种草":"待确认图片创意方向");
+  const productScope=hasItemId?"运营已指定商品 ID，将召回商品信息":"未指定商品 ID，将进入智能选品";
+  const summary=`投放目标：${goal}\n素材类型：${matType}\n投放渠道/媒体：${media}\n承接对象：${isChannel?"频道":"商品"}\n商品范围：${productScope}\n人群意图：${audience}\n核心利益点：${benefit}\n创意方向：${creative}${count?`\n生成规模：提及「${count} 个${matType}」，需确认是总量还是单商品数量`:"\n生成规模：待确认"}\n风险边界：需避免绝对化低价、夸大收益等表达`;
+  const questions=[];
+  if(count)questions.push(`${questions.length+1}. 「${count} 个${matType}」是任务总量还是每个商品生成数量？`);
+  if(!hasItemId)questions.push(`${questions.length+1}. 是否允许 Agent 自主选品？`);
+  if(!isShortVideo&&!isSeed&&!/媒体|渠道|抖音|快手|小红书/.test(t))questions.push(`${questions.length+1}. 请确认具体投放渠道与媒体`);
+  if(questions.length===0)questions.push("1. 以上理解是否准确？如有补充请继续说明");
+  return{summary,questions:questions.join("\n"),agentReply:"已根据你的描述完成业务层理解。请核对右侧「理解总结」和「待确认问题」，确认无误后可进入智能选品。"};
+}
+
+function resetCreateFlow(s,type){
+  s.stage="demand";
+  s.demandAnalyzed=false;
+  s.demandSummary=null;
+  if(type==="video"){s.shots=null;s.shotsCollapsed=false;}
+  s.messages=[{role:"agent",text:type==="video"?"你好，我是视频创作 Agent。请描述本次视频投放目标、渠道与商品范围，我会拆解 Hook/玩法/利益点/CTA 结构，并生成分镜脚本供你确认。":"你好，我是素材创作 Agent。请用自然语言描述本次图片投放诉求，我会先做业务层理解总结，待你确认后再进入选品与创意方案。"}];
+}
+
+function shotField(label,idx,key,val){
+  return`<div class="field"><label>${esc(label)}</label><input data-shot-idx="${idx}" data-shot-key="${esc(key)}" value="${esc(val)}"/></div>`;
+}
+function shotSelect(label,idx,key,val,opts){
+  return`<div class="field"><label>${esc(label)}</label><select data-shot-idx="${idx}" data-shot-key="${esc(key)}">${opts.map(o=>`<option${o===val?" selected":""}>${esc(o)}</option>`).join("")}</select></div>`;
+}
+function renderShotList(s,type){
+  if(!s.shots)s.shots=getDefaultShots();
+  const list=s.shots.map((shot,i)=>`<div class="shot-item">
+    <div class="shot-item-head"><strong>镜头 ${i+1}</strong>${s.shots.length>1?`<button type="button" class="btn btn-ghost btn-sm" data-shot-del="${i}" style="color:var(--red-600);padding:0">删除</button>`:""}</div>
+    <div class="form-grid">
+      ${shotField("时长",i,"duration",shot.duration)}
+      ${shotSelect("镜头目标",i,"goal",shot.goal,SHOT_GOALS)}
+      ${shotField("画面",i,"visual",shot.visual)}
+      ${shotField("字幕",i,"subtitle",shot.subtitle)}
+      ${shotField("口播",i,"voiceover",shot.voiceover)}
+    </div>
+  </div>`).join("");
+  return`<div class="form-section"><div class="section-head"><h3>分镜脚本 <span class="collapse-toggle" id="${type}-shots-toggle">${s.shotsCollapsed?"展开":"收起"}</span></h3><button type="button" class="btn btn-outline btn-sm" id="${type}-add-shot">+ 添加镜头</button></div>
+    <div class="shot-list" id="${type}-shot-list"${s.shotsCollapsed?' style="display:none"':""}>${list}</div></div>`;
+}
+
+function renderCreate(type){
+  const s=state[type];
+  const isVideo=type==="video";
+
+  let planHtml="";
+  if(s.mode==="replicate"){
+    planHtml=`<div class="replicate-zone">上传参考素材或输入 URL（${isVideo?"视频文件/视频 URL":"JPG、PNG、图片 URL"}）<br><br><button class="btn btn-outline btn-sm">选择文件</button> <button class="btn btn-outline btn-sm">粘贴 URL</button><br><br><span style="font-size:11px">解析后将填充与 AI 原生素材一致的右侧方案字段</span></div>`;
+  }
+  if(s.stage==="demand"&&s.demandAnalyzed&&s.demandSummary){
+    planHtml+=`<div class="form-section"><h3>业务理解总结（Agent 输出，待确认）</h3>
+      <div class="form-grid full"><div class="field full"><label>理解总结</label><textarea readonly class="readonly">${esc(s.demandSummary.summary)}</textarea></div></div>
+      <div class="form-grid full"><div class="field full"><label>待确认问题</label><textarea readonly class="readonly">${esc(s.demandSummary.questions)}</textarea></div></div>
+      <button class="btn btn-primary btn-sm" data-confirm-stage="${type}">确认需求理解，进入智能选品</button></div>`;
+  }
+  if(s.stage==="selection"){
+    planHtml+=`<div class="form-section"><h3>素材承接</h3><div class="form-grid">
+      ${selectField("承接类型","商品",["商品","频道","活动页"])}
+      ${selectField("商品选择方式","AI 智能选品",["AI 智能选品","按类目智能选品","指定商品 ID"])}
+      ${field("选品数量","5",false)}
+    </div></div>
+    <div class="form-section"><h3>选品策略说明</h3><p style="font-size:12px;color:var(--gray-600);line-height:1.6">Agent 已根据投放目标、媒体渠道、素材类型和承接对象完成智能选品。优先选择近期热度较高、价格优势明显、适合展示真实使用场景的商品；过滤风险较高、描述不完整、图片质量较差的商品。共计 5 个商品。</p>
+    <div class="product-cards">${[1,2,3,4,5].map(i=>`<div class="product-card"><div class="title">示例商品 ${i}</div><div>类目：日用百货</div><div class="reason">推荐：近期热度高、价格优势明显的商品</div><button class="btn btn-ghost btn-sm" style="margin-top:4px;padding:0;color:var(--red-600)">删除</button></div>`).join("")}</div>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-outline btn-sm" id="${type}-manage-list">管理商品 List</button><button class="btn btn-outline btn-sm">Agent 智能选品</button><button class="btn btn-primary btn-sm" data-confirm-stage="${type}">确认选品，进入创意方案</button></div></div>`;
+  }
+  if(s.stage==="creative"&&!isVideo){
+    planHtml+=`<div class="form-section"><h3>基础信息</h3><div class="form-grid">
+      ${field("任务名称","6月热门商品-信息流外投",false)}
+      ${selectField("渠道","信息流",["信息流","DSP","种草","厂商"])}
+      ${selectField("媒体","抖音",["抖音","快手","小红书"])}
+      ${field("尺寸要求","1080×1920（系统推导）",true)}
+      ${field("单商品生成素材数","2",false)}
+    </div></div>
+    <div class="form-section"><h3>图片创意方案</h3><div class="form-grid">
+      ${selectField("画面主体","手持商品特写",["手持商品特写","平放展示","人物展示","使用中","多商品合集"])}
+      ${selectField("商品展示","单商品正面展示",["单商品正面展示","多角度细节","真实使用场景","多商品平铺"])}
+      ${field("主文案","领券立减20",false)}
+      ${field("副文案","今日下单更划算",false)}
+      ${field("CTA","立即领取",false)}
+      ${selectField("Logo 位置","左上",["左上","左下","右上","右下","弱化透出"])}
+      ${selectField("价格表达","券后价、限时优惠",["低价感","券后价","同款比价","限时优惠"])}
+      ${selectField("背景风格","真实生活场景",["真实生活场景","干净棚拍","轻促销背景"])}
+      ${selectField("画面氛围","真实、轻促销",["真实","轻促销","生活感","年轻化"])}
+      ${selectField("标签","限时、福利",["限时","福利","包邮","AI 补充标签"])}
+      ${selectField("品牌","平台主品牌",["平台主品牌"])}
+      ${selectField("风提","促销风提-限时优惠",["促销风提-限时优惠"])}
+    </div>
+    <button class="btn btn-primary btn-sm" style="margin-top:10px" data-confirm-stage="${type}">确认方案，生成预览</button></div>`;
+  }
+  if(s.stage==="creative"&&isVideo){
+    if(!s.shots)s.shots=getDefaultShots();
+    planHtml+=`<div class="form-section"><h3>基础信息</h3><div class="form-grid">
+      ${field("任务名称","6月福利短视频",false)}
+      ${selectField("渠道","信息流",["信息流","DSP","种草","厂商"])}
+      ${selectField("媒体","抖音",["抖音","快手"])}
+      ${field("视频尺寸","1080×1920（系统推导）",true)}
+      ${selectField("视频长度","15s",["15s","30s","45s"])}
+      ${field("单商品生成素材数","1",false)}
+    </div></div>
+    <div class="form-section"><h3>视频风格策略</h3><div class="form-grid">${selectField("视频风格（单商品最多绑定1个）","商品展示, 福利权益讲解",["商品展示","模特使用","对比分析","福利权益讲解","场景种草"])}</div></div>
+    <div class="form-section"><h3>视频创意结构</h3><div class="form-grid">
+      ${field("Hook（0-2s）","还在原价买？先领券",false)}
+      ${field("玩法","展示领券后下单流程",false)}
+      ${field("利益点","券后更划算，限时有效",false)}
+      ${field("CTA","点击领取，马上查看",false)}
+    </div></div>
+    ${renderShotList(s,type)}
+    <div class="form-section"><h3>视频组件配置</h3><div class="form-grid">
+      ${selectField("首帧","促销钩子首帧",["促销钩子首帧","商品特写首帧"])}
+      ${selectField("数字人","邻家姐姐（可选）",["无","邻家姐姐数字人"])}
+      ${selectField("品牌","平台主品牌",["平台主品牌"])}
+      ${selectField("Logo 位置","右上",["左上","右上","右下"])}
+      ${selectField("BGM","快节奏促销 BGM",["快节奏促销 BGM","慢节奏种草 BGM"])}
+      ${selectField("转场","缩放闪白",["缩放闪白","淡入淡出"])}
+      ${selectField("音色","温柔女声",["温柔女声","专业男声"])}
+      ${selectField("字幕模板","竖版底部居中",["竖版底部居中"])}
+      ${selectField("字幕渲染","关键词高亮",["关键词高亮","逐字出现"])}
+      ${selectField("CTA 展示方式","尾帧按钮样式",["尾帧按钮样式","浮层引导"])}
+    </div>
+    <button class="btn btn-primary btn-sm" style="margin-top:10px" data-confirm-stage="${type}">确认方案，生成预览</button></div>`;
+  }
+  if(s.stage==="preview"){
+    planHtml+=`<div class="form-section"><h3>预览素材（仅生成 1 个）</h3>
+    <div style="height:200px;background:linear-gradient(135deg,#667eea,#764ba2);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px">${isVideo?"15s 竖版视频预览":"1080×1920 图片预览"}</div>
+    <p style="font-size:11px;color:var(--gray-500);margin-top:8px">预览任务将同步进入任务进度表</p>
+    <button class="btn btn-primary btn-sm" style="margin-top:10px" data-confirm-stage="${type}">确认预览通过，进入批量任务</button></div>`;
+  }
+  if(s.stage==="batch"){
+    planHtml+=`<div class="form-section"><h3>批量任务信息</h3><div class="form-grid">
+      ${field("任务名称","6月热门商品-批量生成",true)}
+      ${field("任务 ID","T-B-AUTO-001",true)}
+      ${field("发起人","当前用户",true)}
+      ${field("发起时间","2026-06-20 14:00",true)}
+      ${field("预计生成数量","10",true)}
+      ${field("当前进度","排队中",true)}
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="alert('批量任务已进入任务进度，素材生成完成后自动提交审核中台')">开始任务</button></div>`;
+  }
+
+  const msgs=s.messages.map(m=>`<div class="msg msg-${m.role}">${esc(m.text)}</div>`).join("");
+  return`<div class="create-page">
+    <div class="mode-bar">
+      <button class="${s.mode==="native"?"active":""}" data-mode="${type}" data-val="native">AI 原生素材</button>
+      <button class="${s.mode==="replicate"?"active":""}" data-mode="${type}" data-val="replicate">爆款复刻素材</button>
+    </div>
+    <div class="create-split">
+      <div class="agent-panel">
+        <div class="agent-messages" id="${type}-msgs">${msgs}</div>
+        <div class="agent-input"><input id="${type}-input" placeholder="用自然语言描述诉求，或与 Agent 继续沟通…"/><button class="btn btn-primary btn-sm" id="${type}-send">发送</button></div>
+      </div>
+      <div class="plan-panel"><h2 style="font-size:14px;font-weight:600;margin-bottom:12px">AI 素材方案</h2>${planHtml||(s.stage==="demand"&&!s.demandAnalyzed?'<p style="color:var(--gray-400);font-size:12px">请先在左侧用自然语言描述投放诉求，Agent 将根据你的输入输出业务理解总结</p>':'<p style="color:var(--gray-400);font-size:12px">与 Agent 对话或确认上一阶段后，方案字段将自动填充</p>')}</div>
+    </div>
+    <div class="create-footer">
+      <span class="spacer"></span>
+      ${s.stage==="creative"?`<button class="btn btn-outline btn-sm">生成 1 个预览素材</button>`:""}
+      ${s.stage==="batch"?`<button class="btn btn-primary btn-sm" disabled title="预览确认后可用">开始任务</button>`:""}
+    </div>
+  </div>`;
+}
+
+function bindCreate(type){
+  const s=state[type];
+  document.querySelectorAll(`[data-mode="${type}"]`).forEach(b=>b.onclick=()=>{s.mode=b.dataset.val;resetCreateFlow(s,type);render()});
+  document.querySelectorAll(`[data-confirm-stage="${type}"]`).forEach(b=>b.onclick=()=>{
+    const i=STAGES.indexOf(s.stage);
+    if(i<STAGES.length-1){
+      s.stage=STAGES[i+1];
+      if(type==="video"&&s.stage==="creative"&&!s.shots)s.shots=getDefaultShots();
+      s.messages.push({role:"agent",text:`已进入【${STAGE_LABELS[s.stage]}】阶段，请在右侧核对字段。`});
+      render();
+    }
+  });
+  const send=document.getElementById(type+"-send");
+  const input=document.getElementById(type+"-input");
+  const manageList=document.getElementById(type+"-manage-list");
+  if(manageList)manageList.onclick=()=>openModal("管理商品 List",`<p style="font-size:12px;color:var(--gray-500);margin-bottom:10px">查看本次任务全部商品，支持删除、搜索召回、添加商品、导出 Excel</p>
+    <table class="data-table"><thead><tr><th>商品 ID</th><th>标题</th><th>类目</th><th>推荐原因</th><th>操作</th></tr></thead>
+    <tbody>${[1,2,3,4,5].map(i=>`<tr><td>SKU-${1000+i}</td><td>示例商品 ${i}</td><td>日用百货</td><td>近期热度高</td><td><button class="btn btn-ghost btn-sm">删除</button></td></tr>`).join("")}</tbody></table>
+    <div style="margin-top:12px;display:flex;gap:8px"><input placeholder="按商品标题搜索召回…" style="flex:1;padding:7px 10px;border:1px solid var(--gray-300);border-radius:6px"/><button class="btn btn-outline btn-sm">添加商品</button><button class="btn btn-outline btn-sm">下载 Excel</button></div>`);
+  if(send&&input){
+    const doSend=()=>{
+      const t=input.value.trim();if(!t)return;
+      s.messages.push({role:"user",text:t});
+      if(s.stage==="demand"){
+        s.demandSummary=analyzeDemand(t,type==="video");
+        s.demandAnalyzed=true;
+        s.messages.push({role:"agent",text:s.demandSummary.agentReply});
+      }else{
+        s.messages.push({role:"agent",text:"已收到补充说明，请继续核对右侧字段。"});
+      }
+      input.value="";render();
+    };
+    send.onclick=doSend;
+    input.onkeydown=e=>{if(e.key==="Enter")doSend()};
+  }
+  if(type==="video"){
+    document.querySelectorAll("[data-shot-idx]").forEach(el=>{
+      const idx=+el.dataset.shotIdx;
+      const key=el.dataset.shotKey;
+      const update=()=>{if(s.shots&&s.shots[idx])s.shots[idx][key]=el.value;};
+      el.oninput=update;
+      el.onchange=update;
+    });
+    const addShot=document.getElementById(type+"-add-shot");
+    if(addShot)addShot.onclick=()=>{
+      if(!s.shots)s.shots=getDefaultShots();
+      s.shots.push({duration:"",goal:"Hook",visual:"",subtitle:"",voiceover:""});
+      s.shotsCollapsed=false;
+      render();
+    };
+    document.querySelectorAll("[data-shot-del]").forEach(btn=>{
+      btn.onclick=e=>{
+        e.stopPropagation();
+        const i=+btn.dataset.shotDel;
+        if(s.shots&&s.shots.length>1){s.shots.splice(i,1);render();}
+      };
+    });
+    const toggle=document.getElementById(type+"-shots-toggle");
+    if(toggle)toggle.onclick=()=>{s.shotsCollapsed=!s.shotsCollapsed;render();};
+  }
+}
+
+function renderKnowledge(){
+  const s=state.knowledge;
+  const libs=s.partition==="video"?VIDEO_KB:IMAGE_KB;
+  const list=MOCK_KNOWLEDGE.filter(k=>{
+    if(k.partition!==s.partition)return false;
+    if(s.subLib!=="all"&&k.lib!==s.subLib)return false;
+    if(s.search&&!k.name.includes(s.search)&&!k.id.includes(s.search))return false;
+    if(s.creator&&!k.creator.includes(s.creator))return false;
+    if(s.created&&k.created!==s.created)return false;
+    if(s.expire&&k.expire!==s.expire)return false;
+    return true;
+  });
+  return`<header class="page-header"><div class="page-header-top"><h1>知识库</h1><button class="btn btn-primary btn-sm">+ 新增资产</button></div>
+    <div class="tabs">${["image","video"].map(p=>`<button class="tab${s.partition===p?" active":""}" data-kp="${p}">${p==="image"?"图片生成知识库":"视频生成知识库"}</button>`).join("")}</div></header>
+    <div class="filters"><div class="filters-row">
+      <div class="filter-field flex-1"><label>搜索</label><div class="search-wrap"><input id="k-search" placeholder="名称、ID、关键词…" value="${esc(s.search)}"/></div></div>
+      ${filterSelect("子库","k-sub",s.subLib,[{v:"all",l:""},...libs.map(l=>({v:l.id,l:l.label}))])}
+    </div><div class="filters-row">
+      ${filterInput("创建人","k-creator",s.creator,"输入创建人")}
+      ${filterDate("创建时间","k-created",s.created)}
+      ${filterDate("失效时间","k-expire",s.expire)}
+    </div></div>
+    <div class="content-split">
+      <aside class="sidebar-panel">${`<button class="sidebar-panel-btn${s.subLib==="all"?" active":""}" data-ks="all">全部资产</button>`+libs.map(l=>`<button class="sidebar-panel-btn${s.subLib===l.id?" active":""}" data-ks="${l.id}">${esc(l.label)}<div style="font-size:10px;color:var(--gray-400);margin-top:2px">${esc(l.fields)}</div></button>`).join("")}</aside>
+      <div class="list-area"><div class="card-list">${list.length?list.map(k=>{
+        const lib=libs.find(l=>l.id===k.lib);
+        return`<article class="knowledge-card"><div style="flex:1"><div class="kid">${esc(k.id)} · ${esc(lib?.label||k.lib)}</div><h3>${esc(k.name)}</h3><p class="summary">${esc(k.summary)}</p><div style="margin-top:8px"><span class="tag tag-gray">${esc(k.creator)}</span><span class="tag tag-blue">${esc(k.created)}</span><span class="tag tag-amber">失效 ${esc(k.expire)}</span></div><div style="margin-top:10px;display:flex;gap:6px"><button class="btn btn-outline btn-sm">编辑</button><button class="btn btn-ghost btn-sm">复制</button><button class="btn btn-ghost btn-sm">设置失效</button></div></div></article>`}).join(""):'<div class="empty"><h3>暂无资产</h3></div>'}</div></div>
+    </div>`;
+}
+
+function renderMaterials(){
+  const s=state.materials;
+  const list=MOCK_MATERIALS.filter(m=>{
+    if(m.partition!==s.partition)return false;
+    if(s.status!=="all"&&m.status!==s.status)return false;
+    if(s.search&&!m.name.includes(s.search)&&!m.id.includes(s.search))return false;
+    return true;
+  });
+  return`<header class="page-header"><div class="page-header-top"><h1>素材库</h1></div>
+    <div class="tabs">${["image","video"].map(p=>`<button class="tab${s.partition===p?" active":""}" data-mp="${p}">${p==="image"?"图片素材":"视频素材"}</button>`).join("")}</div></header>
+    <div class="filters"><div class="filters-row">
+      <div class="filter-field flex-1"><label>关键词</label><input id="m-search" placeholder="素材 ID、任务 ID、名称…" value="${esc(s.search)}"/></div>
+      ${filterSelect("状态","m-status",s.status,[{v:"all",l:""},...Object.entries(MATERIAL_STATUS).map(([v,l])=>({v,l}))])}
+      ${filterSelect("渠道","m-ch","all",Object.entries(CHANNELS).map(([v,l])=>({v,l})))}
+    </div></div>
+    <div class="list-area"><div class="card-grid">${list.map(m=>`<div class="material-card${m.partition==="video"?" video":""}" data-mid="${m.id}">
+      <div class="preview" style="background:${m.color}"></div>
+      <div class="body"><div class="name">${esc(m.name)}</div><div style="margin-top:6px"><span class="tag tag-brand">${esc(MATERIAL_STATUS[m.status])}</span><span class="tag tag-blue">${esc(m.channel)} · ${esc(m.media)}</span></div><div class="meta">${esc(m.id)} · ${esc(m.taskId)}</div></div>
+    </div>`).join("")}</div></div>
+    <div class="bottom-bar"><button class="btn btn-outline btn-sm">批量导出</button></div>`;
+}
+
+function renderTasks(){
+  return`<header class="page-header"><div class="page-header-top"><h1>任务进度</h1></div></header>
+    <div class="list-area"><div class="card-list">${MOCK_TASKS.map(t=>`<article class="row-card">
+      <div style="flex:1;min-width:180px"><div style="font-weight:500">${esc(t.name)}</div><div style="font-size:11px;color:var(--gray-400);margin-top:3px">${esc(t.id)} · ${esc(t.initiator)} · ${esc(t.time)}</div></div>
+      <span class="tag tag-purple">${esc(TASK_TYPE[t.type])}</span>
+      <span class="tag tag-gray">${t.matType==="video"?"视频":"图片"}</span>
+      <span class="tag tag-blue">×${t.count}</span>
+      <span class="tag ${t.progress==="failed"?"tag-red":t.progress==="done"?"tag-green":"tag-amber"}">${esc(TASK_PROGRESS[t.progress])}</span>
+      <span style="font-size:11px;color:var(--gray-500)">${esc(t.note)}</span>
+    </article>`).join("")}</div></div>`;
+}
+
+function renderAudit(){
+  const s=state.audit;
+  const list=MOCK_AUDIT.filter(a=>{
+    if(s.status!=="all"&&a.status!==s.status)return false;
+    if(s.search&&!a.name.includes(s.search)&&!a.taskId.includes(s.search))return false;
+    return true;
+  });
+  return`<header class="page-header"><div class="page-header-top"><h1>审核管理</h1></div></header>
+    <div class="filters"><div class="filters-row">
+      <div class="filter-field flex-1"><label>搜索</label><input id="a-search" placeholder="任务名称、任务 ID…" value="${esc(s.search)}"/></div>
+      ${filterSelect("审批状态","a-status",s.status,[{v:"all",l:""},...Object.entries(AUDIT_STATUS).map(([v,l])=>({v,l}))])}
+    </div></div>
+    <div class="list-area"><div class="card-list">${list.map(a=>`<article class="row-card" data-audit="${a.taskId}">
+      <div style="flex:1"><div style="font-weight:500">${esc(a.name)}</div><div style="font-size:11px;color:var(--gray-400);margin-top:3px">${esc(a.taskId)} · ${esc(a.initiator)} · ${esc(a.time)}</div></div>
+      <span class="tag tag-gray">${a.count} 个素材</span>
+      <span class="tag tag-blue">${esc(a.flow)}</span>
+      <span class="tag ${a.status==="passed"?"tag-green":a.status==="rejected"?"tag-red":"tag-amber"}">${esc(AUDIT_STATUS[a.status])}</span>
+      <button class="btn btn-outline btn-sm">单素材审批明细</button>
+    </article>`).join("")}</div></div>`;
+}
+
+function renderMaterialData(){
+  const s=state.data;
+  const sum=MOCK_DATA_SUMMARY[s.type==="video"?"video":"image"];
+  return`<header class="page-header"><div class="page-header-top"><h1>素材数据</h1></div></header>
+    <div class="filters"><div class="filters-row">
+      ${filterSelect("素材类型","d-type",s.type,[{v:"all",l:"全部素材"},{v:"image",l:"图片"},{v:"video",l:"视频"}])}
+      ${filterSelect("渠道","d-ch",s.channel,Object.entries(CHANNELS).map(([v,l])=>({v,l})))}
+      ${filterSelect("媒体","d-media",s.media,[{v:"all",l:""},...Object.entries(MEDIAS.feed).concat(Object.entries(MEDIAS.seed)).map(([v,l])=>({v,l}))])}
+      ${filterSelect("日期","d-date",s.date,[{v:"today",l:"今天"},{v:"7d",l:"近 7 天"},{v:"30d",l:"近 30 天"},{v:"custom",l:"自定义"}])}
+    </div></div>
+    <div class="list-area">
+      <h3 style="font-size:13px;font-weight:600;margin-bottom:12px">总数据（${s.type==="all"?"图片+视频":s.type==="video"?"视频":"图片"}）</h3>
+      <div class="metrics-grid">
+        <div class="metric-card"><div class="label">采用率</div><div class="value">${sum.adoption}</div><div class="sub">图片/视频分开统计</div></div>
+        <div class="metric-card"><div class="label">跑出率</div><div class="value">${sum.runRate}</div></div>
+        <div class="metric-card"><div class="label">点击率</div><div class="value">${sum.ctr}</div></div>
+        <div class="metric-card"><div class="label">消耗</div><div class="value" style="font-size:16px">${sum.cost}</div><div class="sub">总 / U1 / U2 / U3</div></div>
+        <div class="metric-card"><div class="label">曝光</div><div class="value" style="font-size:16px">${sum.exposure}</div></div>
+        <div class="metric-card"><div class="label">点击</div><div class="value" style="font-size:16px">${sum.clicks}</div></div>
+        <div class="metric-card"><div class="label">U总 CPA</div><div class="value" style="font-size:16px">${sum.cpaAll}</div><div class="sub">U1 ${sum.cpa1} · U2 ${sum.cpa2} · U3 ${sum.cpa3}</div></div>
+      </div>
+      <h3 style="font-size:13px;font-weight:600;margin:18px 0 10px">单素材数据</h3>
+      <table class="data-table"><thead><tr><th>日期</th><th>素材 ID</th><th>类型</th><th>渠道</th><th>媒体</th><th>消耗</th><th>曝光</th><th>点击</th><th>点击率</th><th>U1 CPA</th><th>跑出</th></tr></thead>
+      <tbody>${MOCK_DATA_ROWS.map(r=>`<tr><td>${r.date}</td><td>${esc(r.id)}</td><td>${r.type}</td><td>${r.channel}</td><td>${r.media}</td><td>${r.cost}</td><td>${r.exposure}</td><td>${r.click}</td><td>${r.ctr}</td><td>${r.cpa1}</td><td>${r.run}</td></tr>`).join("")}</tbody></table>
+    </div>`;
+}
+
+function renderAccount(){
+  return`<header class="page-header"><div class="page-header-top"><h1>账号管理</h1></div></header>
+    <div class="list-area">
+      <div class="form-section" style="max-width:600px;margin-bottom:20px"><h3>个人信息</h3><p style="font-size:13px">姓名：李四 · 工号：E002 · 角色：正式员工 · 组织：增长投放部</p></div>
+      <div style="display:flex;gap:8px;margin-bottom:14px"><input placeholder="搜索姓名、工号、身份、组织…" style="flex:1;padding:8px 12px;border:1px solid var(--gray-300);border-radius:8px"/><button class="btn btn-outline btn-sm">正式员工申请审批</button><button class="btn btn-primary btn-sm">创建代理商账号</button></div>
+      <table class="data-table"><thead><tr><th>姓名工号</th><th>身份</th><th>组织</th><th>日志记录</th><th>操作</th></tr></thead>
+      <tbody>${MOCK_ACCOUNTS.map(a=>`<tr><td>${esc(a.name)} (${esc(a.id)})</td><td>${esc(a.role)}</td><td>${esc(a.org)}</td><td>${esc(a.log)}</td><td><button class="btn btn-ghost btn-sm">查看</button></td></tr>`).join("")}</tbody></table>
+      <h3 style="font-size:13px;font-weight:600;margin:24px 0 10px">代理商下载记录</h3>
+      <table class="data-table"><thead><tr><th>渠道</th><th>媒体</th><th>公司</th><th>姓名</th><th>下载详情</th><th>操作时间</th></tr></thead>
+      <tbody><tr><td>信息流</td><td>抖音</td><td>XX传媒</td><td>王五</td><td>下载 5 条视频素材</td><td>2026-06-18 16:30</td></tr></tbody></table>
+    </div>`;
+}
+
+function bindPageEvents(){
+  if(state.page==="image-create"||state.page==="video-create")bindCreate(state.page.replace("-create",""));
+  if(state.page==="knowledge"){
+    document.querySelectorAll("[data-kp]").forEach(b=>b.onclick=()=>{state.knowledge.partition=b.dataset.kp;state.knowledge.subLib="all";render()});
+    document.querySelectorAll("[data-ks]").forEach(b=>b.onclick=()=>{state.knowledge.subLib=b.dataset.ks;render()});
+    const ks=document.getElementById("k-search");if(ks)ks.oninput=e=>{state.knowledge.search=e.target.value;render()};
+    const sub=document.getElementById("k-sub");if(sub)sub.onchange=e=>{state.knowledge.subLib=e.target.value;render()};
+    const kc=document.getElementById("k-creator");if(kc)kc.oninput=e=>{state.knowledge.creator=e.target.value;render()};
+    const kcd=document.getElementById("k-created");if(kcd)kcd.onchange=e=>{state.knowledge.created=e.target.value;render()};
+    const ke=document.getElementById("k-expire");if(ke)ke.onchange=e=>{state.knowledge.expire=e.target.value;render()};
+  }
+  if(state.page==="materials"){
+    document.querySelectorAll("[data-mp]").forEach(b=>b.onclick=()=>{state.materials.partition=b.dataset.mp;render()});
+    const ms=document.getElementById("m-search");if(ms)ms.oninput=e=>{state.materials.search=e.target.value;render()};
+    const st=document.getElementById("m-status");if(st)st.onchange=e=>{state.materials.status=e.target.value;render()};
+    document.querySelectorAll("[data-mid]").forEach(c=>c.onclick=()=>openModal("素材详情","<p>审核通过入库的成品素材，素材 ID 与媒体创意 ID 一致。</p>"));
+  }
+  if(state.page==="audit"){
+    const as=document.getElementById("a-search");if(as)as.oninput=e=>{state.audit.search=e.target.value;render()};
+    const ast=document.getElementById("a-status");if(ast)ast.onchange=e=>{state.audit.status=e.target.value;render()};
+    document.querySelectorAll("[data-audit]").forEach(b=>b.onclick=()=>{
+      const a=MOCK_AUDIT.find(x=>x.taskId===b.dataset.audit);
+      if(!a)return;
+      openModal("单素材审批明细",`<p>任务 ${esc(a.taskId)} · ${esc(a.name)}</p><ul style="margin-top:10px">${a.items.map(i=>`<li>${esc(i.id)} — ${esc(AUDIT_STATUS[i.status]||i.status)}</li>`).join("")||"<li>暂无明细</li>"}</ul>`);
+    });
+  }
+  if(state.page==="material-data"){
+    const dt=document.getElementById("d-type");if(dt)dt.onchange=e=>{state.data.type=e.target.value;render()};
+    const dc=document.getElementById("d-ch");if(dc)dc.onchange=e=>{state.data.channel=e.target.value;render()};
+    const dm=document.getElementById("d-media");if(dm)dm.onchange=e=>{state.data.media=e.target.value;render()};
+    const dd=document.getElementById("d-date");if(dd)dd.onchange=e=>{state.data.date=e.target.value;render()};
+  }
+}
+
+function render(){
+  renderNav();
+  const main=document.getElementById("main");
+  let html="";
+  if(state.page==="image-create")html=`<header class="page-header"><div class="page-header-top"><h1>图片素材生成</h1></div></header>`+renderCreate("image");
+  else if(state.page==="video-create")html=`<header class="page-header"><div class="page-header-top"><h1>视频素材生成</h1></div></header>`+renderCreate("video");
+  else if(state.page==="task-progress")html=renderTasks();
+  else if(state.page==="audit")html=renderAudit();
+  else if(state.page==="materials")html=renderMaterials();
+  else if(state.page==="knowledge")html=renderKnowledge();
+  else if(state.page==="material-data")html=renderMaterialData();
+  else if(state.page==="account")html=renderAccount();
+  main.innerHTML=html;
+  bindPageEvents();
+}
+
+render();
+})();
+</script>
+</body>
+</html>

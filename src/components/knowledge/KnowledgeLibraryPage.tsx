@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/Input";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Tabs } from "@/components/ui/Tabs";
+import { FilterField, FilterSelect } from "@/components/common/FilterSelect";
 import { KnowledgeDetailModal } from "@/components/knowledge/KnowledgeDetailModal";
 import { KnowledgeFormModal } from "@/components/knowledge/KnowledgeFormModal";
+import { Tabs } from "@/components/ui/Tabs";
 import type {
   KnowledgeEntry,
   KnowledgePartition,
@@ -192,102 +193,76 @@ export function KnowledgeLibraryPage() {
       <div className="shrink-0 border-b border-gray-200 bg-white px-6 py-3">
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-end">
-            <div className="relative min-w-0 flex-1 xl:max-w-xs">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <FilterField label="关键词" className="min-w-0 flex-1 xl:max-w-xs">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Input
+                  placeholder="名称、备注、场景、风格…"
+                  className="pl-9"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+            </FilterField>
+            <FilterField label="知识库 ID" className="xl:w-36">
               <Input
-                placeholder="关键词：名称、备注、场景、风格…"
-                className="pl-9"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                placeholder="输入 ID"
+                value={knowledgeId}
+                onChange={(e) => setKnowledgeId(e.target.value)}
               />
-            </div>
-            <Input
-              placeholder="知识库 ID"
-              className="xl:w-36"
-              value={knowledgeId}
-              onChange={(e) => setKnowledgeId(e.target.value)}
-            />
-            <select
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+            </FilterField>
+            <FilterSelect
+              label="子库"
               value={subLibrary}
-              onChange={(e) => setSubLibrary(e.target.value as KnowledgeSubLibrary | "all")}
-            >
-              <option value="all">全部子库</option>
-              {subLibraries.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-            <select
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+              onChange={(v) => setSubLibrary(v as KnowledgeSubLibrary | "all")}
+              options={[
+                { value: "all", label: "" },
+                ...subLibraries.map((c) => ({ value: c.id, label: c.label })),
+              ]}
+            />
+            <FilterSelect
+              label="渠道"
               value={channel}
-              onChange={(e) => setChannel(e.target.value)}
-            >
-              {CHANNEL_OPTIONS.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-            <select
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+              onChange={setChannel}
+              options={CHANNEL_OPTIONS.map((c) => ({ value: c.value, label: c.label }))}
+            />
+            <FilterSelect
+              label="品牌"
               value={brand}
-              onChange={(e) => setBrand(e.target.value)}
-            >
-              {BRAND_OPTIONS.map((b) => (
-                <option key={b.value} value={b.value}>
-                  {b.label}
-                </option>
-              ))}
-            </select>
-            <select
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+              onChange={setBrand}
+              options={BRAND_OPTIONS.map((b) => ({ value: b.value, label: b.label }))}
+            />
+            <FilterSelect
+              label="类目"
               value={industry}
-              onChange={(e) => setIndustry(e.target.value)}
-            >
-              {INDUSTRY_OPTIONS.map((i) => (
-                <option key={i.value} value={i.value}>
-                  {i.label}
-                </option>
-              ))}
-            </select>
+              onChange={setIndustry}
+              options={INDUSTRY_OPTIONS.map((i) => ({ value: i.value, label: i.label }))}
+            />
           </div>
-          <div className="flex flex-wrap gap-2">
-            <select
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+          <div className="flex flex-wrap items-end gap-2">
+            <FilterSelect
+              label="状态"
               value={status}
-              onChange={(e) => setStatus(e.target.value as KnowledgeStatus | "all")}
-            >
-              {STATUS_OPTIONS.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-            <select
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+              onChange={(v) => setStatus(v as KnowledgeStatus | "all")}
+              options={STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label }))}
+            />
+            <FilterSelect
+              label="优质标签"
               value={qualityTag}
-              onChange={(e) => setQualityTag(e.target.value as QualityTag | "all")}
-            >
-              {QUALITY_TAG_OPTIONS.map((q) => (
-                <option key={q.value} value={q.value}>
-                  {q.label}
-                </option>
-              ))}
-            </select>
-            <select
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+              onChange={(v) => setQualityTag(v as QualityTag | "all")}
+              options={QUALITY_TAG_OPTIONS.map((q) => ({ value: q.value, label: q.label }))}
+            />
+            <FilterSelect
+              label="更新时间"
               value={datePreset}
-              onChange={(e) => setDatePreset(e.target.value as typeof datePreset)}
-            >
-              <option value="all">全部时间</option>
-              <option value="7d">近 7 天更新</option>
-              <option value="30d">近 30 天更新</option>
-            </select>
-            <span className="self-center text-xs text-gray-400">
-              共 {filtered.length} 条 · {partition === "video" ? "视频" : "图片"}分区
-            </span>
+              onChange={(v) => setDatePreset(v as typeof datePreset)}
+              options={[
+                { value: "all", label: "" },
+                { value: "7d", label: "近 7 天" },
+                { value: "30d", label: "近 30 天" },
+              ]}
+            />
+            <span className="pb-2 text-xs text-gray-400">共 {filtered.length} 条</span>
           </div>
         </div>
       </div>

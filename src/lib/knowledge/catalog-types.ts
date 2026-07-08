@@ -170,14 +170,17 @@ export function getSubLibraryLabel(partition: KnowledgePartition, id: KnowledgeS
 }
 
 export function getChannelLabel(value: string): string {
+  if (value === "all") return "全渠道";
   return CHANNEL_OPTIONS.find((c) => c.value === value)?.label ?? value;
 }
 
 export function getBrandLabel(value: string): string {
+  if (value === "all") return "全品牌";
   return BRAND_OPTIONS.find((b) => b.value === value)?.label ?? value;
 }
 
 export function getIndustryLabel(value: string): string {
+  if (value === "all") return "全类目";
   return INDUSTRY_OPTIONS.find((i) => i.value === value)?.label ?? value;
 }
 
