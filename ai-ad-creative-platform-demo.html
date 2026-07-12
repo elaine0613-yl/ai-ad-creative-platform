@@ -173,14 +173,30 @@ const IMAGE_KB=[
 ];
 const VIDEO_KB=[
   ...IMAGE_KB.filter(k=>["channel","product","brand","fengti","tag"].includes(k.id)),
-  {id:"avatar",label:"数字人库",fields:"名称、ID、形象、适用场景、口播风格、备注"},
-  {id:"subtitle",label:"字幕模板库",fields:"模板名称、ID、样式预览、适用媒体、适合位置、备注"},
-  {id:"voice",label:"音色库",fields:"音色名称、ID、性别/年龄感、语速、情绪、试听、备注"},
-  {id:"bgm",label:"BGM 库",fields:"BGM 名称、ID、音频、节奏、情绪、适用场景、版权备注"},
-  {id:"transition",label:"转场库",fields:"转场名称、ID、效果预览、适用镜头类型、备注"},
-  {id:"firstframe",label:"首帧库",fields:"首帧名称、ID、预览、适用风格、适用媒体、备注"},
-  {id:"lastframe",label:"尾帧库",fields:"尾帧名称、ID、预览、CTA 类型、适用媒体、备注"},
+  {id:"avatar",label:"数字人库",fields:"数字人名称、ID、适用场景、绑定音色 ID、语速、最大时长、口播风格"},
+  {id:"subtitle",label:"字幕模板库",fields:"模板名称、ID、适用媒体、适配尺寸、字幕渲染、绑定字体、适合位置"},
+  {id:"voice",label:"音色库",fields:"音色名称、ID、性别/年龄感、语速、默认音量、适配视频风格、情绪"},
+  {id:"bgm",label:"BGM 库",fields:"BGM 名称、ID、节奏、适配视频风格、默认音量占比、循环播放、情绪、版权备注"},
+  {id:"transition",label:"转场库",fields:"转场名称、ID、适用镜头类型、适配视频节奏、默认转场时长、备注"},
+  {id:"firstframe",label:"首帧库",fields:"首帧名称、ID、适用媒体、适配尺寸、适配 Hook 类型、默认文案位置、适用风格"},
+  {id:"lastframe",label:"尾帧库",fields:"尾帧名称、ID、CTA 类型、适配尺寸、默认 CTA 文案、默认展示时长、适用媒体"},
 ];
+
+const KB_DETAIL_TEMPLATES={
+  channel:[{k:"频道 ID",v:""},{k:"默认投放渠道",v:""},{k:"默认适配媒体",v:""},{k:"默认图片尺寸",v:""},{k:"默认视频尺寸",v:""},{k:"默认视频时长",v:""},{k:"频道核心利益点",v:"",full:true},{k:"频道默认 CTA 文案",v:"",full:true}],
+  product:[{k:"商品 ID",v:""},{k:"商品类目",v:""},{k:"商品默认价格表达",v:""},{k:"历史投放表现标签",v:"",full:true},{k:"适配创意方向",v:"",full:true},{k:"风险提示",v:"",full:true}],
+  brand:[{k:"品牌 ID",v:""},{k:"品牌 Logo 尺寸",v:""},{k:"适合展示位",v:""},{k:"品牌特色标语",v:"",full:true},{k:"默认文案风格",v:""},{k:"品牌禁用表达清单",v:"",full:true}],
+  fengti:[{k:"风格提示词 ID",v:""},{k:"适用场景",v:""},{k:"适配媒体",v:""},{k:"适配商品类目",v:"",full:true},{k:"风格提示词内容",v:"",full:true}],
+  font:[{k:"字体 ID",v:""},{k:"字体包",v:""},{k:"适用文案类型",v:""},{k:"绑定品牌 ID",v:""},{k:"备注",v:"",full:true}],
+  tag:[{k:"标签 ID",v:""},{k:"文案内容",v:""},{k:"标签类型",v:""},{k:"适配投放场景",v:""},{k:"风险等级",v:""}],
+  avatar:[{k:"数字人 ID",v:""},{k:"适用场景",v:"",full:true},{k:"绑定音色 ID",v:""},{k:"默认语速参数",v:""},{k:"支持最大时长",v:""},{k:"口播风格",v:"",full:true}],
+  subtitle:[{k:"模板 ID",v:""},{k:"适用媒体",v:""},{k:"适配尺寸",v:""},{k:"默认字幕渲染方式",v:""},{k:"绑定字体 ID",v:""},{k:"适合位置",v:""}],
+  voice:[{k:"音色 ID",v:""},{k:"性别/年龄感",v:""},{k:"语速参数值",v:""},{k:"默认音量",v:""},{k:"适配视频风格",v:"",full:true},{k:"情绪",v:"",full:true}],
+  bgm:[{k:"BGM ID",v:""},{k:"节奏",v:""},{k:"适配视频风格",v:"",full:true},{k:"默认音量占比",v:""},{k:"支持循环播放",v:""},{k:"情绪",v:""},{k:"版权备注",v:"",full:true}],
+  transition:[{k:"转场 ID",v:""},{k:"适用镜头类型",v:"",full:true},{k:"适配视频节奏",v:""},{k:"默认转场时长",v:""},{k:"备注",v:"",full:true}],
+  firstframe:[{k:"首帧 ID",v:""},{k:"适用媒体",v:""},{k:"适配尺寸",v:""},{k:"适配 Hook 类型",v:""},{k:"默认文案位置",v:""},{k:"适用风格",v:"",full:true}],
+  lastframe:[{k:"尾帧 ID",v:""},{k:"CTA 类型",v:""},{k:"适配尺寸",v:""},{k:"默认 CTA 文案",v:""},{k:"默认展示时长",v:""},{k:"适用媒体",v:""}],
+};
 
 const NAV=[
   {id:"image-create",label:"图片素材生成"},
@@ -210,14 +226,14 @@ const state={
   role:"employee",
   image:{mode:"native",stage:"demand",demandAnalyzed:false,demandSummary:null,messages:[{role:"agent",text:"你好，我是素材创作 Agent。请用自然语言描述本次图片投放诉求，我会先做业务层理解总结，待你确认后再进入选品与创意方案。"}]},
   video:{mode:"native",stage:"demand",demandAnalyzed:false,demandSummary:null,shots:null,shotsCollapsed:false,messages:[{role:"agent",text:"你好，我是视频创作 Agent。请描述本次视频投放目标、渠道与商品范围，我会拆解 Hook/玩法/利益点/CTA 结构，并生成分镜脚本供你确认。"}]},
-  knowledge:{partition:"image",subLib:"all",search:"",creator:"",created:"",expire:""},
+  knowledge:{partition:"image",subLib:"all",search:"",creator:"",created:"",expire:"",form:null},
   materials:{partition:"image",search:"",status:"all"},
   tasks:{filter:"all"},
   audit:{status:"all",search:""},
   data:{type:"all",channel:"all",media:"all",date:"7d"},
 };
 
-const MOCK_KNOWLEDGE=[
+let knowledgeStore=[
   // ── 图片知识库 · 频道库（飞书案例） ──
   {id:"CH001",lib:"channel",partition:"image",name:"数码好物频道",creator:"运营专员A",created:"2026-05-01",expire:"2099-12-31 23:59:59",detail:[
     {k:"频道 ID",v:"CH001"},{k:"默认投放渠道",v:"信息流"},{k:"默认适配媒体",v:"巨量引擎"},
@@ -281,42 +297,130 @@ const MOCK_KNOWLEDGE=[
     {k:"适配投放场景",v:"全场景通用"},{k:"风险等级",v:"低风险"},
   ]},
 
-  // ── 视频知识库 · 频道库 ──
-  {id:"CH-V-001",lib:"channel",partition:"video",name:"短视频福利频道",creator:"运营C",created:"2026-04-20",expire:"2099-12-31",summary:"频道 ID：CH-V-001 · 介绍：15s 福利快剪专用频道 · 页面：https://channel.example.com/short-video"},
-  {id:"CH-V-002",lib:"channel",partition:"video",name:"种草剧情频道",creator:"运营B",created:"2026-04-25",expire:"2099-12-31",summary:"频道 ID：CH-V-002 · 介绍：慢节奏种草与剧情短片 · 页面：https://channel.example.com/seed"},
-  // ── 视频知识库 · 商品库 ──
-  {id:"PD-V-001",lib:"product",partition:"video",name:"九成新运动鞋",creator:"运营A",created:"2026-05-12",expire:"2099-12-31",summary:"类目：运动户外 / CAT-205 · 商品 ID：SKU-77301 · 标题：Nike 跑鞋 42 码九成新 · 标签：捡漏、高跑量"},
-  {id:"PD-V-002",lib:"product",partition:"video",name:"便携榨汁杯",creator:"运营C",created:"2026-05-22",expire:"2099-12-31",summary:"类目：厨房小电 / CAT-302 · 商品 ID：SKU-66402 · 标题：USB 充电榨汁杯 · 标签：场景种草、福利"},
-  // ── 视频知识库 · 品牌资产库 ──
-  {id:"BR-V-001",lib:"brand",partition:"video",name:"视频片头 LOGO 规范",creator:"品牌组",created:"2026-03-20",expire:"2099-12-31",summary:"品牌 ID：BR-V-001 · 展示位：片头 1s、片尾 2s · 备注：工程合成，运营不配置"},
-  {id:"BR-V-002",lib:"brand",partition:"video",name:"竖版视频品牌角标",creator:"品牌组",created:"2026-04-05",expire:"2099-12-31",summary:"品牌 ID：BR-V-002 · 展示位：右上弱化透出 · 备注：全程不遮挡字幕区"},
-  // ── 视频知识库 · 风提库 ──
-  {id:"FT-V-001",lib:"fengti",partition:"video",name:"视频口播收尾风提",creator:"运营B",created:"2026-06-02",expire:"2099-12-31",summary:"风提 ID：FT-V-001 · 内容：省钱神券，领券更划算 · 场景：15s 福利短视频收尾"},
-  {id:"FT-V-002",lib:"fengti",partition:"video",name:"种草口播风提",creator:"运营A",created:"2026-05-28",expire:"2099-12-31",summary:"风提 ID：FT-V-002 · 内容：真的好用，推荐试试 · 场景：小红书慢节奏种草"},
-  // ── 视频知识库 · 标签库 ──
-  {id:"TG-V-001",lib:"tag",partition:"video",name:"券后价浮层标签",creator:"运营A",created:"2026-05-06",expire:"2099-12-31",summary:"标签 ID：TG-V-001 · 文案：券后 ¥XX · 类型：价格浮层 · 备注：玩法段展示"},
-  {id:"TG-V-002",lib:"tag",partition:"video",name:"倒计时角标",creator:"运营C",created:"2026-05-09",expire:"2099-12-31",summary:"标签 ID：TG-V-002 · 文案：仅剩今天 · 类型：紧迫角标 · 备注：CTA 段配合使用"},
-  // ── 视频知识库 · 数字人库 ──
-  {id:"AV-V-001",lib:"avatar",partition:"video",name:"邻家姐姐数字人",creator:"运营A",created:"2026-04-20",expire:"2099-12-31",summary:"数字人 ID：AV-001 · 形象：25-30 岁邻家风 · 场景：食品/日用 · 口播：接地气、中速"},
-  {id:"AV-V-002",lib:"avatar",partition:"video",name:"专业导购数字人",creator:"运营B",created:"2026-04-28",expire:"2099-12-31",summary:"数字人 ID：AV-002 · 形象：商务休闲男 · 场景：3C/家电 · 口播：专业讲解、稳态"},
-  // ── 视频知识库 · 字幕模板库 ──
-  {id:"ST-V-001",lib:"subtitle",partition:"video",name:"竖版底部居中字幕模板",creator:"设计组",created:"2026-02-01",expire:"2099-12-31",summary:"模板 ID：ST-001 · 适用媒体：抖音/快手 · 位置：底部居中 · 样式：白字黑描边"},
-  {id:"ST-V-002",lib:"subtitle",partition:"video",name:"小红书种草字幕模板",creator:"设计组",created:"2026-02-15",expire:"2099-12-31",summary:"模板 ID：ST-002 · 适用媒体：小红书 · 位置：画面中部 · 样式：细体浅色字幕"},
-  // ── 视频知识库 · 音色库 ──
-  {id:"VC-V-001",lib:"voice",partition:"video",name:"温柔女声",creator:"运营C",created:"2026-03-10",expire:"2099-12-31",summary:"音色 ID：VC-001 · 性别/年龄：25 岁女声 · 语速：180 字/分 · 情绪：温柔种草"},
-  {id:"VC-V-002",lib:"voice",partition:"video",name:"专业男声",creator:"运营A",created:"2026-03-12",expire:"2099-12-31",summary:"音色 ID：VC-002 · 性别/年龄：35 岁男声 · 语速：200 字/分 · 情绪：专业可信"},
-  // ── 视频知识库 · BGM 库 ──
-  {id:"BG-V-001",lib:"bgm",partition:"video",name:"快节奏促销 BGM",creator:"运营C",created:"2026-05-10",expire:"2099-12-31",summary:"BGM ID：BG-001 · 节奏：120BPM · 情绪：轻快促销 · 场景：15s 福利快剪 · 版权：已授权"},
-  {id:"BG-V-002",lib:"bgm",partition:"video",name:"慢节奏种草 BGM",creator:"运营B",created:"2026-05-14",expire:"2099-12-31",summary:"BGM ID：BG-002 · 节奏：90BPM · 情绪：温暖治愈 · 场景：30s 剧情种草 · 版权：已授权"},
-  // ── 视频知识库 · 转场库 ──
-  {id:"TR-V-001",lib:"transition",partition:"video",name:"缩放闪白转场",creator:"设计组",created:"2026-04-01",expire:"2099-12-31",summary:"转场 ID：TR-001 · 效果：缩放弹入+闪白 · 适用镜头：快切福利段"},
-  {id:"TR-V-002",lib:"transition",partition:"video",name:"淡入淡出转场",creator:"设计组",created:"2026-04-03",expire:"2099-12-31",summary:"转场 ID：TR-002 · 效果：柔和淡入淡出 · 适用镜头：种草慢节奏"},
-  // ── 视频知识库 · 首帧库 ──
-  {id:"FF-V-001",lib:"firstframe",partition:"video",name:"促销钩子首帧",creator:"运营A",created:"2026-05-01",expire:"2099-12-31",summary:"首帧 ID：FF-001 · 风格：强钩子+权益点 · 适用媒体：抖音竖版 · 预览：人物+大字幕"},
-  {id:"FF-V-002",lib:"firstframe",partition:"video",name:"商品特写首帧",creator:"运营B",created:"2026-05-03",expire:"2099-12-31",summary:"首帧 ID：FF-002 · 风格：商品居中特写 · 适用媒体：快手竖版 · 预览：白底商品+轻促销背景"},
-  // ── 视频知识库 · 尾帧库 ──
-  {id:"LF-V-001",lib:"lastframe",partition:"video",name:"尾帧按钮样式",creator:"运营C",created:"2026-05-05",expire:"2099-12-31",summary:"尾帧 ID：LF-001 · CTA 类型：立即领取按钮 · 适用媒体：抖音/快手 · 预览：品牌色按钮+固定口播"},
-  {id:"LF-V-002",lib:"lastframe",partition:"video",name:"浮层引导尾帧",creator:"运营A",created:"2026-05-07",expire:"2099-12-31",summary:"尾帧 ID：LF-002 · CTA 类型：浮层引导点击 · 适用媒体：小红书 · 预览：弱化按钮+种草收尾"},
+  // ── 视频知识库 · 频道库（复用图片案例） ──
+  {id:"CH001",lib:"channel",partition:"video",name:"数码好物频道",creator:"运营专员A",created:"2026-05-01",expire:"2099-12-31 23:59:59",detail:[
+    {k:"频道 ID",v:"CH001"},{k:"默认投放渠道",v:"信息流"},{k:"默认适配媒体",v:"巨量引擎"},
+    {k:"默认图片尺寸",v:"720×1280 竖版"},{k:"默认视频尺寸",v:"720×1280 9:16 竖版"},{k:"默认视频时长",v:"15s、30s"},
+    {k:"频道核心利益点",v:"高性价比、科技感、正品保障",full:true},{k:"频道默认 CTA 文案",v:"点击查看数码好物",full:true},
+  ]},
+  {id:"CH002",lib:"channel",partition:"video",name:"居家生活频道",creator:"运营专员A",created:"2026-05-01",expire:"2099-12-31 23:59:59",detail:[
+    {k:"频道 ID",v:"CH002"},{k:"默认投放渠道",v:"种草"},{k:"默认适配媒体",v:"小红书"},
+    {k:"默认图片尺寸",v:"1080×1440 3:4"},{k:"默认视频尺寸",v:"1080×1920 9:16 竖版"},{k:"默认视频时长",v:"15s、60s"},
+    {k:"频道核心利益点",v:"实用平价、生活感、省心好物",full:true},{k:"频道默认 CTA 文案",v:"进入频道挑好物",full:true},
+  ]},
+  // ── 视频知识库 · 商品库（复用图片案例） ──
+  {id:"ITEM0001",lib:"product",partition:"video",name:"半入耳式无线蓝牙耳机",creator:"运营专员B",created:"2026-05-10",expire:"2099-12-31 23:59:59",detail:[
+    {k:"商品 ID",v:"ITEM0001"},{k:"商品类目",v:"3C 数码"},{k:"商品默认价格表达",v:"日常价 99 元，券后 79 元"},
+    {k:"历史投放表现标签",v:"高点击率、高消耗",full:true},{k:"适配创意方向",v:"商品展示、对比分析、使用演示",full:true},
+    {k:"风险提示",v:"无",full:true},
+  ]},
+  {id:"ITEM0002",lib:"product",partition:"video",name:"便携式迷你榨汁杯",creator:"运营专员B",created:"2026-05-10",expire:"2099-12-31 23:59:59",detail:[
+    {k:"商品 ID",v:"ITEM0002"},{k:"商品类目",v:"家电"},{k:"商品默认价格表达",v:"限时特惠 59 元"},
+    {k:"历史投放表现标签",v:"高转化、女性用户偏好",full:true},{k:"适配创意方向",v:"场景种草、使用演示、开箱验货",full:true},
+    {k:"风险提示",v:"不可宣传「减肥」「治病」等医疗功效",full:true},
+  ]},
+  // ── 视频知识库 · 品牌资产库（复用图片案例） ──
+  {id:"BR001",lib:"brand",partition:"video",name:"优享生活",creator:"运营专员C",created:"2026-03-15",expire:"2099-12-31 23:59:59",detail:[
+    {k:"品牌 ID",v:"BR001"},{k:"品牌 Logo 尺寸",v:"200×80px"},{k:"适合展示位",v:"左上角、弱化透出"},
+    {k:"品牌特色标语",v:"品质生活，好物不贵",full:true},{k:"默认文案风格",v:"平实亲民、生活感"},
+    {k:"品牌禁用表达清单",v:"全网最低、第一、顶级",full:true},
+  ]},
+  {id:"BR002",lib:"brand",partition:"video",name:"潮电优选",creator:"运营专员C",created:"2026-03-15",expire:"2099-12-31 23:59:59",detail:[
+    {k:"品牌 ID",v:"BR002"},{k:"品牌 Logo 尺寸",v:"220×70px"},{k:"适合展示位",v:"右上角、左下角"},
+    {k:"品牌特色标语",v:"潮玩数码，优选好物",full:true},{k:"默认文案风格",v:"年轻潮流、科技感"},
+    {k:"品牌禁用表达清单",v:"国家级、最高级、特效",full:true},
+  ]},
+  // ── 视频知识库 · 风格提示词库（复用图片案例） ──
+  {id:"ST001",lib:"fengti",partition:"video",name:"真实生活感风格",creator:"运营专员C",created:"2026-04-01",expire:"2099-12-31 23:59:59",detail:[
+    {k:"风格提示词 ID",v:"ST001"},{k:"适用场景",v:"商品展示、种草类素材"},{k:"适配媒体",v:"小红书、信息流"},
+    {k:"适配商品类目",v:"居家日用、食品、服饰",full:true},
+    {k:"风格提示词内容",v:"自然光效，真实居家场景，无过度修图，画面质感自然通透，商品细节清晰，整体色调偏暖白，无夸张特效",full:true},
+  ]},
+  {id:"ST002",lib:"fengti",partition:"video",name:"轻促销氛围感风格",creator:"运营专员C",created:"2026-04-01",expire:"2099-12-31 23:59:59",detail:[
+    {k:"风格提示词 ID",v:"ST002"},{k:"适用场景",v:"活动促销、信息流素材"},{k:"适配媒体",v:"巨量引擎、腾讯广告"},
+    {k:"适配商品类目",v:"全品类通用",full:true},
+    {k:"风格提示词内容",v:"浅渐变促销背景，柔和光影，突出价格与利益点，整体视觉清爽不杂乱，促销元素克制不夸张，品牌辨识度清晰",full:true},
+  ]},
+  // ── 视频知识库 · 标签库（复用图片案例） ──
+  {id:"TAG001",lib:"tag",partition:"video",name:"限时特惠",creator:"运营专员B",created:"2026-05-05",expire:"2099-12-31 23:59:59",detail:[
+    {k:"标签 ID",v:"TAG001"},{k:"文案内容",v:"限时特惠 立减 30 元"},{k:"标签类型",v:"利益点标签"},
+    {k:"适配投放场景",v:"大促活动、日常促销"},{k:"风险等级",v:"低风险"},
+  ]},
+  {id:"TAG002",lib:"tag",partition:"video",name:"正品保障",creator:"运营专员B",created:"2026-05-05",expire:"2099-12-31 23:59:59",detail:[
+    {k:"标签 ID",v:"TAG002"},{k:"文案内容",v:"正品保障 售后无忧"},{k:"标签类型",v:"信任背书标签"},
+    {k:"适配投放场景",v:"全场景通用"},{k:"风险等级",v:"低风险"},
+  ]},
+  // ── 视频知识库 · 数字人库（飞书案例） ──
+  {id:"AV001",lib:"avatar",partition:"video",name:"晓雯-知性女数字人",creator:"运营专员E",created:"2026-04-10",expire:"2099-12-31 23:59:59",detail:[
+    {k:"数字人 ID",v:"AV001"},{k:"适用场景",v:"知识讲解、权益说明、频道玩法介绍",full:true},
+    {k:"绑定音色 ID",v:"VO001"},{k:"默认语速参数",v:"150 字/分钟"},{k:"支持最大时长",v:"120 秒"},
+    {k:"口播风格",v:"语速适中、语气专业亲和、咬字清晰",full:true},
+  ]},
+  {id:"AV002",lib:"avatar",partition:"video",name:"小宇-活力男数字人",creator:"运营专员E",created:"2026-04-10",expire:"2099-12-31 23:59:59",detail:[
+    {k:"数字人 ID",v:"AV002"},{k:"适用场景",v:"福利播报、开箱测评、潮流好物推荐",full:true},
+    {k:"绑定音色 ID",v:"VO002"},{k:"默认语速参数",v:"180 字/分钟"},{k:"支持最大时长",v:"60 秒"},
+    {k:"口播风格",v:"语速偏快、语气热情有感染力、节奏感强",full:true},
+  ]},
+  // ── 视频知识库 · 字幕模板库（飞书案例） ──
+  {id:"SUB001",lib:"subtitle",partition:"video",name:"短视频高亮字幕模板",creator:"设计专员D",created:"2026-03-01",expire:"2099-12-31 23:59:59",detail:[
+    {k:"模板 ID",v:"SUB001"},{k:"适用媒体",v:"短视频媒体"},{k:"适配尺寸",v:"720×1280、1080×1920"},
+    {k:"默认字幕渲染方式",v:"关键词高亮"},{k:"绑定字体 ID",v:"FT001"},{k:"适合位置",v:"画面底部居中"},
+  ]},
+  {id:"SUB002",lib:"subtitle",partition:"video",name:"信息流简约字幕模板",creator:"设计专员D",created:"2026-03-01",expire:"2099-12-31 23:59:59",detail:[
+    {k:"模板 ID",v:"SUB002"},{k:"适用媒体",v:"信息流媒体"},{k:"适配尺寸",v:"1280×720、720×1280"},
+    {k:"默认字幕渲染方式",v:"逐字出现"},{k:"绑定字体 ID",v:"FT001"},{k:"适合位置",v:"画面中下部"},
+  ]},
+  // ── 视频知识库 · 音色库（飞书案例） ──
+  {id:"VO001",lib:"voice",partition:"video",name:"知性女声",creator:"运营专员E",created:"2026-03-15",expire:"2099-12-31 23:59:59",detail:[
+    {k:"音色 ID",v:"VO001"},{k:"性别/年龄感",v:"女、25-30 岁"},{k:"语速参数值",v:"150 字/分钟"},{k:"默认音量",v:"0.8"},
+    {k:"适配视频风格",v:"知识讲解、权益说明",full:true},{k:"情绪",v:"平和、专业、亲和",full:true},
+  ]},
+  {id:"VO002",lib:"voice",partition:"video",name:"活力男声",creator:"运营专员E",created:"2026-03-15",expire:"2099-12-31 23:59:59",detail:[
+    {k:"音色 ID",v:"VO002"},{k:"性别/年龄感",v:"男、22-28 岁"},{k:"语速参数值",v:"180 字/分钟"},{k:"默认音量",v:"0.85"},
+    {k:"适配视频风格",v:"福利播报、开箱测评",full:true},{k:"情绪",v:"热情、有感染力、轻快",full:true},
+  ]},
+  // ── 视频知识库 · BGM 库（飞书案例） ──
+  {id:"BGM001",lib:"bgm",partition:"video",name:"轻快活力电子乐",creator:"运营专员E",created:"2026-05-01",expire:"2099-12-31 23:59:59",detail:[
+    {k:"BGM ID",v:"BGM001"},{k:"节奏",v:"中快节奏、鼓点清晰"},{k:"适配视频风格",v:"福利播报、开箱测评、剧情短片",full:true},
+    {k:"默认音量占比",v:"0.25"},{k:"支持循环播放",v:"是"},{k:"情绪",v:"活泼、轻快、有朝气"},
+    {k:"版权备注",v:"平台自有版权，全渠道商用",full:true},
+  ]},
+  {id:"BGM002",lib:"bgm",partition:"video",name:"温馨治愈钢琴曲",creator:"运营专员E",created:"2026-05-01",expire:"2099-12-31 23:59:59",detail:[
+    {k:"BGM ID",v:"BGM002"},{k:"节奏",v:"舒缓、节奏平稳"},{k:"适配视频风格",v:"场景种草、问题解决、商品展示",full:true},
+    {k:"默认音量占比",v:"0.2"},{k:"支持循环播放",v:"是"},{k:"情绪",v:"治愈、温暖、安静"},
+    {k:"版权备注",v:"平台自有版权，全渠道商用",full:true},
+  ]},
+  // ── 视频知识库 · 转场库（飞书案例） ──
+  {id:"TR001",lib:"transition",partition:"video",name:"淡入淡出转场",creator:"设计专员D",created:"2026-04-01",expire:"2099-12-31 23:59:59",detail:[
+    {k:"转场 ID",v:"TR001"},{k:"适用镜头类型",v:"场景切换、叙事段落过渡",full:true},
+    {k:"适配视频节奏",v:"中、慢节奏"},{k:"默认转场时长",v:"0.5 秒"},
+    {k:"备注",v:"通用转场，适配所有风格视频，过渡自然",full:true},
+  ]},
+  {id:"TR002",lib:"transition",partition:"video",name:"左滑平移转场",creator:"设计专员D",created:"2026-04-01",expire:"2099-12-31 23:59:59",detail:[
+    {k:"转场 ID",v:"TR002"},{k:"适用镜头类型",v:"商品切换、清单罗列、快节奏剪辑",full:true},
+    {k:"适配视频节奏",v:"快节奏"},{k:"默认转场时长",v:"0.2 秒"},
+    {k:"备注",v:"适配快节奏短视频、清单类视频",full:true},
+  ]},
+  // ── 视频知识库 · 首帧库（飞书案例） ──
+  {id:"FC001",lib:"firstframe",partition:"video",name:"福利爆点首帧模板",creator:"设计专员D",created:"2026-05-01",expire:"2099-12-31 23:59:59",detail:[
+    {k:"首帧 ID",v:"FC001"},{k:"适用媒体",v:"短视频媒体"},{k:"适配尺寸",v:"720×1280、1080×1920"},
+    {k:"适配 Hook 类型",v:"利益爆点、数字冲击"},{k:"默认文案位置",v:"画面上半部分居中"},
+    {k:"适用风格",v:"促销福利、活动转化",full:true},
+  ]},
+  {id:"FC002",lib:"firstframe",partition:"video",name:"商品展示首帧模板",creator:"设计专员D",created:"2026-05-01",expire:"2099-12-31 23:59:59",detail:[
+    {k:"首帧 ID",v:"FC002"},{k:"适用媒体",v:"信息流媒体"},{k:"适配尺寸",v:"1280×720、720×1280"},
+    {k:"适配 Hook 类型",v:"场景引入、商品出镜"},{k:"默认文案位置",v:"画面底部叠加"},
+    {k:"适用风格",v:"商品展示、场景种草",full:true},
+  ]},
+  // ── 视频知识库 · 尾帧库（飞书案例） ──
+  {id:"EC001",lib:"lastframe",partition:"video",name:"点击查看尾帧模板",creator:"设计专员D",created:"2026-05-05",expire:"2099-12-31 23:59:59",detail:[
+    {k:"尾帧 ID",v:"EC001"},{k:"CTA 类型",v:"引导点击跳转"},{k:"适配尺寸",v:"全尺寸通用"},
+    {k:"默认 CTA 文案",v:"点击查看详情"},{k:"默认展示时长",v:"2 秒"},{k:"适用媒体",v:"全渠道通用"},
+  ]},
+  {id:"EC002",lib:"lastframe",partition:"video",name:"立即领取尾帧模板",creator:"设计专员D",created:"2026-05-05",expire:"2099-12-31 23:59:59",detail:[
+    {k:"尾帧 ID",v:"EC002"},{k:"CTA 类型",v:"引导领取转化"},{k:"适配尺寸",v:"720×1280、1080×1920"},
+    {k:"默认 CTA 文案",v:"立即领取福利"},{k:"默认展示时长",v:"3 秒"},{k:"适用媒体",v:"短视频媒体"},
+  ]},
 ];
 
 const MOCK_MATERIALS=[
@@ -369,6 +473,81 @@ document.getElementById("modal").onclick=closeModal;
 function renderKnowledgeDetail(k){
   if(k.detail&&k.detail.length)return`<div class="kb-fields">${k.detail.map(f=>`<div class="kb-field${f.full?" full":""}"><span class="kb-k">${esc(f.k)}</span><span class="kb-v">${esc(f.v)}</span></div>`).join("")}</div>`;
   return k.summary?`<p class="summary">${esc(k.summary)}</p>`:"";
+}
+
+function cloneDetail(detail){return(detail||[]).map(f=>({k:f.k,v:f.v,full:!!f.full}));}
+function newKnowledgeDraft(lib,partition){
+  const tpl=KB_DETAIL_TEMPLATES[lib]||[];
+  return{id:"",lib,partition,name:"",creator:"",created:new Date().toISOString().slice(0,10),expire:"2099-12-31 23:59:59",detail:cloneDetail(tpl)};
+}
+function openKnowledgeForm(mode,item){
+  state.knowledge.form={mode,item:JSON.parse(JSON.stringify(item))};
+  const libs=state.knowledge.partition==="video"?VIDEO_KB:IMAGE_KB;
+  const libLabel=libs.find(l=>l.id===item.lib)?.label||item.lib;
+  const title=mode==="add"?"新增资产 · "+libLabel:"编辑资产 · "+item.name;
+  const f=item;
+  const libSelect=mode==="add"&&state.knowledge.subLib==="all"?`<div class="field full"><label>所属子库</label><select id="kb-form-lib">${libs.map(l=>`<option value="${esc(l.id)}"${l.id===f.lib?" selected":""}>${esc(l.label)}</option>`).join("")}</select></div>`:"";
+  const body=`<form id="kb-form" class="form-grid" style="gap:12px">
+    ${libSelect}
+    <div class="field"><label>资产名称</label><input id="kb-f-name" value="${esc(f.name)}"/></div>
+    <div class="field"><label>资产 ID</label><input id="kb-f-id" value="${esc(f.id)}" ${mode==="edit"?"readonly class=\"readonly\"":""}/></div>
+    <div class="field"><label>创建人</label><input id="kb-f-creator" value="${esc(f.creator)}"/></div>
+    <div class="field"><label>创建时间</label><input type="date" id="kb-f-created" value="${esc((f.created||"").slice(0,10))}"/></div>
+    <div class="field full"><label>失效时间</label><input id="kb-f-expire" value="${esc(f.expire)}"/></div>
+    ${(f.detail||[]).map((d,i)=>`<div class="field${d.full?" full":""}"><label>${esc(d.k)}</label>${d.full?`<textarea id="kb-f-d-${i}" rows="2">${esc(d.v)}</textarea>`:`<input id="kb-f-d-${i}" value="${esc(d.v)}"/>`}</div>`).join("")}
+    <div class="field full" style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+      <button type="button" class="btn btn-outline btn-sm" id="kb-form-cancel">取消</button>
+      <button type="button" class="btn btn-primary btn-sm" id="kb-form-save">保存</button>
+    </div>
+  </form>`;
+  openModal(title,body);
+  const cancel=document.getElementById("kb-form-cancel");
+  if(cancel)cancel.onclick=()=>{state.knowledge.form=null;closeModal()};
+  const save=document.getElementById("kb-form-save");
+  if(save)save.onclick=saveKnowledgeForm;
+  const libEl=document.getElementById("kb-form-lib");
+  if(libEl)libEl.onchange=()=>{
+    const draft=newKnowledgeDraft(libEl.value,state.knowledge.partition);
+    draft.creator=f.creator||"";
+    openKnowledgeForm("add",draft);
+  };
+}
+function saveKnowledgeForm(){
+  const form=state.knowledge.form;if(!form)return;
+  const f=form.item;
+  const nameEl=document.getElementById("kb-f-name");
+  const idEl=document.getElementById("kb-f-id");
+  const creatorEl=document.getElementById("kb-f-creator");
+  const createdEl=document.getElementById("kb-f-created");
+  const expireEl=document.getElementById("kb-f-expire");
+  if(!nameEl||!idEl||!nameEl.value.trim()||!idEl.value.trim()){alert("请填写资产名称和资产 ID");return}
+  f.name=nameEl.value.trim();
+  f.id=idEl.value.trim();
+  f.creator=creatorEl?creatorEl.value.trim():"";
+  f.created=createdEl?createdEl.value:"";
+  f.expire=expireEl?expireEl.value.trim():"2099-12-31 23:59:59";
+  (f.detail||[]).forEach((d,i)=>{const el=document.getElementById("kb-f-d-"+i);if(el)d.v=el.value.trim()});
+  if(form.mode==="add"){
+    if(knowledgeStore.some(k=>k.id===f.id&&k.partition===f.partition)){alert("该分区下资产 ID 已存在");return}
+    knowledgeStore.push(f);
+  }else{
+    const idx=knowledgeStore.findIndex(k=>k.id===f.id&&k.partition===f.partition&&k.lib===f.lib);
+    if(idx>=0)knowledgeStore[idx]=f;
+  }
+  state.knowledge.form=null;
+  closeModal();
+  render();
+}
+function copyKnowledgeItem(item){
+  const copy=JSON.parse(JSON.stringify(item));
+  copy.id=item.id+"-COPY";
+  copy.name=item.name+"（副本）";
+  knowledgeStore.push(copy);
+  render();
+}
+function expireKnowledgeItem(item){
+  const k=knowledgeStore.find(x=>x.id===item.id&&x.partition===item.partition&&x.lib===item.lib);
+  if(k){k.expire=new Date().toISOString().slice(0,10)+" 00:00:00";render()}
 }
 
 function renderNav(){
@@ -503,14 +682,14 @@ function renderCreate(type){
     </div></div>
     ${renderShotList(s,type)}
     <div class="form-section"><h3>视频组件配置</h3><div class="form-grid">
-      ${selectField("首帧","促销钩子首帧",["促销钩子首帧","商品特写首帧"])}
-      ${selectField("数字人","邻家姐姐（可选）",["无","邻家姐姐数字人"])}
+      ${selectField("首帧","福利爆点首帧模板",["福利爆点首帧模板","商品展示首帧模板"])}
+      ${selectField("数字人","晓雯-知性女数字人",["无","晓雯-知性女数字人","小宇-活力男数字人"])}
       ${selectField("品牌","优享生活",["优享生活","潮电优选"])}
       ${selectField("Logo 位置","右上",["左上","右上","右下"])}
-      ${selectField("BGM","快节奏促销 BGM",["快节奏促销 BGM","慢节奏种草 BGM"])}
-      ${selectField("转场","缩放闪白",["缩放闪白","淡入淡出"])}
-      ${selectField("音色","温柔女声",["温柔女声","专业男声"])}
-      ${selectField("字幕模板","竖版底部居中",["竖版底部居中"])}
+      ${selectField("BGM","轻快活力电子乐",["轻快活力电子乐","温馨治愈钢琴曲"])}
+      ${selectField("转场","淡入淡出转场",["淡入淡出转场","左滑平移转场"])}
+      ${selectField("音色","知性女声",["知性女声","活力男声"])}
+      ${selectField("字幕模板","短视频高亮字幕模板",["短视频高亮字幕模板","信息流简约字幕模板"])}
       ${selectField("字幕渲染","关键词高亮",["关键词高亮","逐字出现"])}
       ${selectField("CTA 展示方式","尾帧按钮样式",["尾帧按钮样式","浮层引导"])}
     </div>
@@ -620,7 +799,7 @@ function bindCreate(type){
 function renderKnowledge(){
   const s=state.knowledge;
   const libs=s.partition==="video"?VIDEO_KB:IMAGE_KB;
-  const list=MOCK_KNOWLEDGE.filter(k=>{
+  const list=knowledgeStore.filter(k=>{
     if(k.partition!==s.partition)return false;
     if(s.subLib!=="all"&&k.lib!==s.subLib)return false;
     if(s.search&&!k.name.includes(s.search)&&!k.id.includes(s.search))return false;
@@ -629,7 +808,7 @@ function renderKnowledge(){
     if(s.expire&&k.expire!==s.expire)return false;
     return true;
   });
-  return`<header class="page-header"><div class="page-header-top"><h1>知识库</h1><button class="btn btn-primary btn-sm">+ 新增资产</button></div>
+  return`<header class="page-header"><div class="page-header-top"><h1>知识库</h1><button class="btn btn-primary btn-sm" id="kb-add-btn">+ 新增资产</button></div>
     <div class="tabs">${["image","video"].map(p=>`<button class="tab${s.partition===p?" active":""}" data-kp="${p}">${p==="image"?"图片生成知识库":"视频生成知识库"}</button>`).join("")}</div></header>
     <div class="filters"><div class="filters-row">
       <div class="filter-field flex-1"><label>搜索</label><div class="search-wrap"><input id="k-search" placeholder="名称、ID、关键词…" value="${esc(s.search)}"/></div></div>
@@ -643,7 +822,7 @@ function renderKnowledge(){
       <aside class="sidebar-panel">${`<button class="sidebar-panel-btn${s.subLib==="all"?" active":""}" data-ks="all">全部资产</button>`+libs.map(l=>`<button class="sidebar-panel-btn${s.subLib===l.id?" active":""}" data-ks="${l.id}">${esc(l.label)}<div style="font-size:10px;color:var(--gray-400);margin-top:2px">${esc(l.fields)}</div></button>`).join("")}</aside>
       <div class="list-area"><div class="card-list">${list.length?list.map(k=>{
         const lib=libs.find(l=>l.id===k.lib);
-        return`<article class="knowledge-card"><div style="flex:1"><div class="kid">${esc(k.id)} · ${esc(lib?.label||k.lib)}</div><h3>${esc(k.name)}</h3>${renderKnowledgeDetail(k)}<div style="margin-top:8px"><span class="tag tag-gray">${esc(k.creator)}</span><span class="tag tag-blue">${esc(k.created)}</span><span class="tag tag-amber">失效 ${esc(k.expire)}</span></div><div style="margin-top:10px;display:flex;gap:6px"><button class="btn btn-outline btn-sm">编辑</button><button class="btn btn-ghost btn-sm">复制</button><button class="btn btn-ghost btn-sm">设置失效</button></div></div></article>`}).join(""):'<div class="empty"><h3>暂无资产</h3></div>'}</div></div>
+        return`<article class="knowledge-card"><div style="flex:1"><div class="kid">${esc(k.id)} · ${esc(lib?.label||k.lib)}</div><h3>${esc(k.name)}</h3>${renderKnowledgeDetail(k)}<div style="margin-top:8px"><span class="tag tag-gray">${esc(k.creator)}</span><span class="tag tag-blue">${esc(k.created)}</span><span class="tag tag-amber">失效 ${esc(k.expire)}</span></div><div style="margin-top:10px;display:flex;gap:6px"><button class="btn btn-outline btn-sm" data-kb-edit="${esc(k.id)}" data-kb-lib="${esc(k.lib)}">编辑</button><button class="btn btn-ghost btn-sm" data-kb-copy="${esc(k.id)}" data-kb-lib="${esc(k.lib)}">复制</button><button class="btn btn-ghost btn-sm" data-kb-expire="${esc(k.id)}" data-kb-lib="${esc(k.lib)}">设置失效</button></div></div></article>`}).join(""):'<div class="empty"><h3>暂无资产</h3></div>'}</div></div>
     </div>`;
 }
 
@@ -752,6 +931,26 @@ function bindPageEvents(){
     const kc=document.getElementById("k-creator");if(kc)kc.oninput=e=>{state.knowledge.creator=e.target.value;render()};
     const kcd=document.getElementById("k-created");if(kcd)kcd.onchange=e=>{state.knowledge.created=e.target.value;render()};
     const ke=document.getElementById("k-expire");if(ke)ke.onchange=e=>{state.knowledge.expire=e.target.value;render()};
+    const addBtn=document.getElementById("kb-add-btn");
+    if(addBtn)addBtn.onclick=()=>{
+      const lib=state.knowledge.subLib==="all"?(state.knowledge.partition==="video"?VIDEO_KB:IMAGE_KB)[0].id:state.knowledge.subLib;
+      openKnowledgeForm("add",newKnowledgeDraft(lib,state.knowledge.partition));
+    };
+    document.querySelectorAll("[data-kb-edit]").forEach(btn=>btn.onclick=e=>{
+      e.stopPropagation();
+      const item=knowledgeStore.find(k=>k.id===btn.dataset.kbEdit&&k.lib===btn.dataset.kbLib&&k.partition===state.knowledge.partition);
+      if(item)openKnowledgeForm("edit",item);
+    });
+    document.querySelectorAll("[data-kb-copy]").forEach(btn=>btn.onclick=e=>{
+      e.stopPropagation();
+      const item=knowledgeStore.find(k=>k.id===btn.dataset.kbCopy&&k.lib===btn.dataset.kbLib&&k.partition===state.knowledge.partition);
+      if(item)copyKnowledgeItem(item);
+    });
+    document.querySelectorAll("[data-kb-expire]").forEach(btn=>btn.onclick=e=>{
+      e.stopPropagation();
+      const item=knowledgeStore.find(k=>k.id===btn.dataset.kbExpire&&k.lib===btn.dataset.kbLib&&k.partition===state.knowledge.partition);
+      if(item)expireKnowledgeItem(item);
+    });
   }
   if(state.page==="materials"){
     document.querySelectorAll("[data-mp]").forEach(b=>b.onclick=()=>{state.materials.partition=b.dataset.mp;render()});
