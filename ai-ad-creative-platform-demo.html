@@ -114,7 +114,9 @@
     .metric-card{background:#fff;border:1px solid var(--gray-200);border-radius:10px;padding:14px}
     .metric-card .label{font-size:11px;color:var(--gray-500)}
     .metric-card .value{font-size:22px;font-weight:600;margin-top:4px;color:var(--gray-900)}
-    .metric-card .sub{font-size:10px;color:var(--gray-400);margin-top:2px}
+    .metric-card.is-clickable{cursor:pointer;transition:border-color .15s,box-shadow .15s}
+    .metric-card.is-clickable:hover{border-color:var(--brand-600);box-shadow:0 0 0 3px var(--brand-50)}
+    .metric-card .sub-link{color:var(--brand-600);font-size:10px;margin-top:4px}
     table.data-table{width:100%;border-collapse:collapse;font-size:12px;background:#fff;border-radius:10px;overflow:hidden;border:1px solid var(--gray-200)}
     table.data-table th,table.data-table td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--gray-100)}
     table.data-table th{background:var(--gray-50);color:var(--gray-500);font-weight:500;font-size:11px}
@@ -515,8 +517,18 @@ const MOCK_AUDIT=[
 ];
 
 const MOCK_DATA_SUMMARY={
-  image:{adoption:"68%",runRate:"42%",ctr:"3.2%",cost:"¥128,400",exposure:"4.02M",clicks:"128K",cpa1:"¥18.5",cpa2:"¥24.2",cpa3:"¥31.0",cpaAll:"¥22.8"},
-  video:{adoption:"55%",runRate:"38%",ctr:"2.8%",cost:"¥86,200",exposure:"2.15M",clicks:"60K",cpa1:"¥22.1",cpa2:"¥28.6",cpa3:"¥35.4",cpaAll:"¥26.3"},
+  image:{
+    adoption:"68%",runRate:"42%",ctr:"3.2%",
+    cost:"¥128,400",cost1:"¥52,100",cost2:"¥41,800",cost3:"¥34,500",
+    exposure:"4.02M",clicks:"128K",
+    cpaAll:"¥22.8",cpa1:"¥18.5",cpa2:"¥24.2",cpa3:"¥31.0",
+  },
+  video:{
+    adoption:"55%",runRate:"38%",ctr:"2.8%",
+    cost:"¥86,200",cost1:"¥34,600",cost2:"¥28,900",cost3:"¥22,700",
+    exposure:"2.15M",clicks:"60K",
+    cpaAll:"¥26.3",cpa1:"¥22.1",cpa2:"¥28.6",cpa3:"¥35.4",
+  },
 };
 
 const MOCK_DATA_ROWS=[
@@ -532,17 +544,62 @@ function renderDataThumb(r){
   const isVideo=r.type==="video";
   return`<div class="data-thumb${isVideo?" video":""}" title="${isVideo?"视频缩略图":"图片缩略图"}"><div class="thumb-bg" style="background:${esc(r.color||"var(--gray-200)")}"></div>${isVideo?`<div class="play">▶</div>`:""}</div>`;
 }
-function renderSummaryMetrics(sum,label){
+function getULevelRows(type){
+  const sum=MOCK_DATA_SUMMARY[type==="video"?"video":"image"];
+  return[
+    {level:"总",cost:sum.cost,cpa:sum.cpaAll},
+    {level:"U1",cost:sum.cost1,cpa:sum.cpa1},
+    {level:"U2",cost:sum.cost2,cpa:sum.cpa2},
+    {level:"U3",cost:sum.cost3,cpa:sum.cpa3},
+  ];
+}
+function renderUBreakdownTable(type){
+  const rows=getULevelRows(type);
+  return`<table class="data-table" id="u-breakdown-table"><thead><tr><th>层级</th><th>消耗</th><th>CPA</th></tr></thead>
+    <tbody>${rows.map(r=>`<tr><td><strong>${esc(r.level)}</strong></td><td>${esc(r.cost)}</td><td>${esc(r.cpa)}</td></tr>`).join("")}</tbody></table>`;
+}
+function openUBreakdownModal(metric,initType){
+  const type=initType==="video"?"video":"image";
+  state.data.drillType=type;
+  state.data.drillMetric=metric;
+  const title=metric==="cpa"?"U 层级 CPA / 消耗明细":"U 层级 消耗 / CPA 明细";
+  const body=`<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+      <div class="tabs" style="border:none;padding:0;gap:6px">
+        <button type="button" class="tab${type==="image"?" active":""}" data-u-type="image" style="border:1px solid var(--gray-200);border-radius:999px;padding:6px 14px">图片</button>
+        <button type="button" class="tab${type==="video"?" active":""}" data-u-type="video" style="border:1px solid var(--gray-200);border-radius:999px;padding:6px 14px">视频</button>
+      </div>
+      <span style="font-size:11px;color:var(--gray-400)">可查看总 / U1 / U2 / U3 的消耗与 CPA</span>
+    </div>
+    <div id="u-breakdown-body">${renderUBreakdownTable(type)}</div>`;
+  openModal(title,body);
+  document.querySelectorAll("[data-u-type]").forEach(btn=>{
+    btn.onclick=e=>{
+      e.stopPropagation();
+      const next=btn.dataset.uType;
+      state.data.drillType=next;
+      document.querySelectorAll("[data-u-type]").forEach(b=>b.classList.toggle("active",b.dataset.uType===next));
+      const wrap=document.getElementById("u-breakdown-body");
+      if(wrap)wrap.innerHTML=renderUBreakdownTable(next);
+    };
+  });
+}
+function renderSummaryMetrics(sum,label,type){
   return`<div class="summary-block">
-      <h4><span class="tag ${label==="视频"?"tag-purple":"tag-blue"}">${esc(label)}总数据</span><span style="font-size:11px;font-weight:400;color:var(--gray-400)">与${label==="视频"?"图片":"视频"}分开统计</span></h4>
+      <h4><span class="tag ${label==="视频"?"tag-purple":"tag-blue"}">${esc(label)}总数据</span></h4>
       <div class="metrics-grid">
         <div class="metric-card"><div class="label">采用率</div><div class="value">${sum.adoption}</div></div>
         <div class="metric-card"><div class="label">跑出率</div><div class="value">${sum.runRate}</div></div>
         <div class="metric-card"><div class="label">点击率</div><div class="value">${sum.ctr}</div></div>
-        <div class="metric-card"><div class="label">消耗</div><div class="value" style="font-size:16px">${sum.cost}</div><div class="sub">总 / U1 / U2 / U3</div></div>
+        <div class="metric-card is-clickable" data-open-u="cost" data-u-init="${type}" title="点击查看 U1/U2/U3 消耗与 CPA">
+          <div class="label">消耗</div><div class="value" style="font-size:16px">${sum.cost}</div>
+          <div class="sub">总 / U1 / U2 / U3</div><div class="sub-link">点击查看明细 →</div>
+        </div>
         <div class="metric-card"><div class="label">曝光</div><div class="value" style="font-size:16px">${sum.exposure}</div></div>
         <div class="metric-card"><div class="label">点击</div><div class="value" style="font-size:16px">${sum.clicks}</div></div>
-        <div class="metric-card"><div class="label">U总 CPA</div><div class="value" style="font-size:16px">${sum.cpaAll}</div><div class="sub">U1 ${sum.cpa1} · U2 ${sum.cpa2} · U3 ${sum.cpa3}</div></div>
+        <div class="metric-card is-clickable" data-open-u="cpa" data-u-init="${type}" title="点击查看 U1/U2/U3 CPA 与消耗">
+          <div class="label">U总 CPA</div><div class="value" style="font-size:16px">${sum.cpaAll}</div>
+          <div class="sub">U1 ${sum.cpa1} · U2 ${sum.cpa2} · U3 ${sum.cpa3}</div><div class="sub-link">点击查看明细 →</div>
+        </div>
       </div>
     </div>`;
 }
@@ -1418,7 +1475,7 @@ function renderMaterialData(){
     </div></div>
     <div class="list-area">
       <h3 style="font-size:13px;font-weight:600;margin-bottom:12px">总数据</h3>
-      ${type==="image"?renderSummaryMetrics(MOCK_DATA_SUMMARY.image,"图片"):renderSummaryMetrics(MOCK_DATA_SUMMARY.video,"视频")}
+      ${type==="image"?renderSummaryMetrics(MOCK_DATA_SUMMARY.image,"图片","image"):renderSummaryMetrics(MOCK_DATA_SUMMARY.video,"视频","video")}
       <h3 style="font-size:13px;font-weight:600;margin:8px 0 10px">单素材数据（${type==="video"?"视频":"图片"}）</h3>
       <table class="data-table"><thead><tr><th>素材预览</th><th>日期</th><th>素材 ID</th><th>类型</th><th>渠道</th><th>媒体</th><th>消耗</th><th>曝光</th><th>点击</th><th>点击率</th><th>U1 CPA</th><th>跑出</th></tr></thead>
       <tbody>${rows.length?rows.map(r=>`<tr>
@@ -1497,6 +1554,9 @@ function bindPageEvents(){
     const dc=document.getElementById("d-ch");if(dc)dc.onchange=e=>{state.data.channel=e.target.value;render()};
     const dm=document.getElementById("d-media");if(dm)dm.onchange=e=>{state.data.media=e.target.value;render()};
     const dd=document.getElementById("d-date");if(dd)dd.onchange=e=>{state.data.date=e.target.value;render()};
+    document.querySelectorAll("[data-open-u]").forEach(card=>{
+      card.onclick=()=>openUBreakdownModal(card.dataset.openU,card.dataset.uInit||state.data.type);
+    });
   }
 }
 
