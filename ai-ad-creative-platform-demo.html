@@ -132,6 +132,15 @@
     .field input,.field select,.field textarea{width:100%;padding:7px 10px;border:1px solid var(--gray-300);border-radius:6px;font-size:12px}
     .field textarea{min-height:60px;resize:vertical}
     .field .readonly{background:var(--gray-50);color:var(--gray-600)}
+    .multi-select{position:relative}
+    .multi-select-trigger{width:100%;padding:7px 10px;border:1px solid var(--gray-300);border-radius:6px;font-size:12px;background:#fff;text-align:left;cursor:pointer;color:var(--gray-800)}
+    .multi-select-panel{display:none;position:absolute;z-index:20;left:0;right:0;top:calc(100% + 4px);background:#fff;border:1px solid var(--gray-200);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.08);padding:8px;max-height:220px;overflow:auto}
+    .multi-select.open .multi-select-panel{display:block}
+    .multi-select-panel label{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;font-size:12px;cursor:pointer}
+    .multi-select-panel label:hover{background:var(--gray-50)}
+    .multi-select-panel input{width:auto}
+    .multi-select-panel label.is-disabled{opacity:.45;cursor:not-allowed}
+    .style-hint{font-size:11px;color:var(--gray-500);margin-top:8px;line-height:1.5}
     .product-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-top:8px}
     .product-card{border:1px solid var(--gray-200);border-radius:8px;padding:10px;font-size:11px;background:var(--gray-50)}
     .product-card .title{font-weight:500;margin-bottom:4px}
@@ -213,6 +222,7 @@ const NAV=[
 const STAGES=["demand","selection","creative","preview","batch"];
 const STAGE_LABELS={demand:"需求理解确认",selection:"智能选品确认",creative:"创意方案确认",preview:"预览素材确认",batch:"批量任务确认"};
 const SHOT_GOALS=["Hook","玩法","利益点","CTA"];
+const VIDEO_STYLES=["商品展示","模特使用","对比分析","频道玩法讲解","福利权益讲解","清单推荐","场景种草","问题解决","开箱验货","剧情短片"];
 const PRODUCT_POOL=[
   {name:"半入耳式无线蓝牙耳机",category:"3C 数码",reason:"近期热度高、价格优势明显"},
   {name:"便携式迷你榨汁杯",category:"家电",reason:"高转化、适合真实使用场景"},
@@ -267,7 +277,7 @@ const state={
   page:"image-create",
   role:"employee",
   image:{mode:"native",stage:"demand",demandAnalyzed:false,demandSummary:null,productSelectMode:"AI 智能选品",categoryValue:"",productIdValue:"",productCount:"5",selectionStrategy:null,selectedProducts:null,productBatch:0,messages:[{role:"agent",text:"你好，我是素材创作 Agent。请用自然语言描述本次图片投放诉求，我会先做业务层理解总结，待你确认后再进入选品与创意方案。"}]},
-  video:{mode:"native",stage:"demand",demandAnalyzed:false,demandSummary:null,productSelectMode:"AI 智能选品",categoryValue:"",productIdValue:"",productCount:"5",selectionStrategy:null,selectedProducts:null,productBatch:0,shots:null,shotsCollapsed:false,messages:[{role:"agent",text:"你好，我是视频创作 Agent。请描述本次视频投放目标、渠道与商品范围，我会拆解 Hook/玩法/利益点/CTA 结构，并生成分镜脚本供你确认。"}]},
+  video:{mode:"native",stage:"demand",demandAnalyzed:false,demandSummary:null,productSelectMode:"AI 智能选品",categoryValue:"",productIdValue:"",productCount:"5",selectionStrategy:null,selectedProducts:null,productBatch:0,videoStyleCount:1,videoStyles:["商品展示"],videoStyleConfirmed:false,videoStyleMultiOpen:false,shots:null,shotsCollapsed:false,messages:[{role:"agent",text:"你好，我是视频创作 Agent。请描述本次视频投放目标、渠道与商品范围，我会拆解 Hook/玩法/利益点/CTA 结构，并生成分镜脚本供你确认。"}]},
   knowledge:{partition:"image",subLib:"all",search:"",creator:"",created:"",expire:"",form:null},
   materials:{partition:"image",search:"",status:"all"},
   tasks:{filter:"all"},
@@ -637,8 +647,51 @@ function resetCreateFlow(s,type){
   s.selectionStrategy=null;
   s.selectedProducts=null;
   s.productBatch=0;
-  if(type==="video"){s.shots=null;s.shotsCollapsed=false;}
+  if(type==="video"){s.shots=null;s.shotsCollapsed=false;s.videoStyleCount=1;s.videoStyles=["商品展示"];s.videoStyleConfirmed=false;s.videoStyleMultiOpen=false;}
   s.messages=[{role:"agent",text:type==="video"?"你好，我是视频创作 Agent。请描述本次视频投放目标、渠道与商品范围，我会拆解 Hook/玩法/利益点/CTA 结构，并生成分镜脚本供你确认。":"你好，我是素材创作 Agent。请用自然语言描述本次图片投放诉求，我会先做业务层理解总结，待你确认后再进入选品与创意方案。"}];
+}
+
+function renderVideoStyleStrategy(s){
+  const count=Math.max(1,Math.min(VIDEO_STYLES.length,Number(s.videoStyleCount)||1));
+  s.videoStyleCount=count;
+  if(!Array.isArray(s.videoStyles))s.videoStyles=["商品展示"];
+  if(s.videoStyles.length>count)s.videoStyles=s.videoStyles.slice(0,count);
+  if(s.videoStyles.length===0)s.videoStyles=[VIDEO_STYLES[0]];
+  const countOpts=Array.from({length:Math.min(5,VIDEO_STYLES.length)},(_,i)=>i+1).map(n=>`<option value="${n}"${n===count?" selected":""}>${n} 个</option>`).join("");
+  let styleField="";
+  if(count===1){
+    const cur=s.videoStyles[0]||VIDEO_STYLES[0];
+    if(!s.videoStyles.includes(cur))s.videoStyles=[cur];
+    styleField=`<div class="field"><label>视频风格</label><select id="video-style-single">${VIDEO_STYLES.map(o=>`<option${o===cur?" selected":""}>${esc(o)}</option>`).join("")}</select></div>`;
+  }else{
+    const summary=s.videoStyles.length?s.videoStyles.join("、"):"请下拉多选视频风格";
+    styleField=`<div class="field"><label>视频风格（下拉多选，需选满 ${count} 个）</label>
+      <div class="multi-select${s.videoStyleMultiOpen?" open":""}" id="video-style-multi">
+        <button type="button" class="multi-select-trigger" id="video-style-trigger">${esc(summary)}（${s.videoStyles.length}/${count}）</button>
+        <div class="multi-select-panel">${VIDEO_STYLES.map(st=>{
+          const checked=s.videoStyles.includes(st);
+          const disabled=!checked&&s.videoStyles.length>=count;
+          return`<label class="${disabled?"is-disabled":""}"><input type="checkbox" data-video-style="${esc(st)}"${checked?" checked":""}${disabled?" disabled":""}/>${esc(st)}</label>`;
+        }).join("")}</div>
+      </div></div>`;
+  }
+  let extra="";
+  if(count===1){
+    extra=`<p class="style-hint">当前仅选择 1 个风格，全部商品将统一使用「${esc(s.videoStyles[0]||VIDEO_STYLES[0])}」，无需 AI 智能分配。</p>`;
+  }else{
+    extra=`<p class="style-hint">已选择多个风格。单个商品最多绑定 1 个风格；点击「确认风格」后，Agent 将根据商品特点在后台为每个商品分配风格，前台无需逐商品查看。</p>
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button type="button" class="btn btn-outline btn-sm" id="video-confirm-styles">确认风格</button>
+        ${s.videoStyleConfirmed?`<span class="tag tag-blue">已确认，Agent 已完成后台分配</span>`:""}
+      </div>`;
+  }
+  return`<div class="form-section"><h3>视频风格策略</h3>
+    <div class="form-grid">
+      <div class="field"><label>视频风格数量</label><select id="video-style-count">${countOpts}</select></div>
+      ${styleField}
+    </div>
+    ${extra}
+  </div>`;
 }
 
 function renderProductSelectFields(s,type){
@@ -735,7 +788,7 @@ function renderCreate(type){
   }
   if(s.stage==="creative"&&isVideo){
     if(!s.shots)s.shots=getDefaultShots();
-    planHtml+=`<div class="form-section"><h3>基础信息</h3><div class="form-grid">
+    planHtml+=`    <div class="form-section"><h3>基础信息</h3><div class="form-grid">
       ${field("任务名称","6月福利短视频",false)}
       ${selectField("渠道","信息流",["信息流","DSP","种草","厂商"])}
       ${selectField("媒体","抖音",["抖音","快手"])}
@@ -743,7 +796,7 @@ function renderCreate(type){
       ${selectField("视频长度","15s",["15s","30s","45s"])}
       ${field("单商品生成素材数","1",false)}
     </div></div>
-    <div class="form-section"><h3>视频风格策略</h3><div class="form-grid">${selectField("视频风格（单商品最多绑定1个）","商品展示, 福利权益讲解",["商品展示","模特使用","对比分析","福利权益讲解","场景种草"])}</div></div>
+    ${renderVideoStyleStrategy(s)}
     <div class="form-section"><h3>视频创意结构</h3><div class="form-grid">
       ${field("Hook（0-2s）","还在原价买？先领券",false)}
       ${field("玩法","展示领券后下单流程",false)}
@@ -877,6 +930,75 @@ function bindCreate(type){
     input.onkeydown=e=>{if(e.key==="Enter")doSend()};
   }
   if(type==="video"){
+    const styleCountEl=document.getElementById("video-style-count");
+    if(styleCountEl)styleCountEl.onchange=()=>{
+      const next=Math.max(1,Number(styleCountEl.value)||1);
+      s.videoStyleCount=next;
+      s.videoStyleMultiOpen=false;
+      s.videoStyleConfirmed=false;
+      if(next===1){
+        s.videoStyles=[(s.videoStyles&&s.videoStyles[0])||VIDEO_STYLES[0]];
+      }else{
+        s.videoStyles=(s.videoStyles||[]).slice(0,next);
+      }
+      render();
+    };
+    const styleSingle=document.getElementById("video-style-single");
+    if(styleSingle)styleSingle.onchange=()=>{s.videoStyles=[styleSingle.value];s.videoStyleConfirmed=false;};
+    const multi=document.getElementById("video-style-multi");
+    const trigger=document.getElementById("video-style-trigger");
+    if(trigger&&multi){
+      trigger.onclick=e=>{
+        e.stopPropagation();
+        s.videoStyleMultiOpen=!s.videoStyleMultiOpen;
+        render();
+      };
+      document.querySelectorAll("[data-video-style]").forEach(cb=>{
+        cb.onchange=()=>{
+          const name=cb.dataset.videoStyle;
+          let list=[...(s.videoStyles||[])];
+          if(cb.checked){
+            if(!list.includes(name)&&list.length<s.videoStyleCount)list.push(name);
+          }else{
+            list=list.filter(x=>x!==name);
+          }
+          s.videoStyles=list;
+          s.videoStyleConfirmed=false;
+          s.videoStyleMultiOpen=true;
+          render();
+        };
+      });
+      if(s.videoStyleMultiOpen){
+        setTimeout(()=>{
+          const onDocClick=e=>{
+            const panel=document.getElementById("video-style-multi");
+            if(panel&&!panel.contains(e.target)){
+              s.videoStyleMultiOpen=false;
+              document.removeEventListener("click",onDocClick,true);
+              render();
+            }
+          };
+          document.addEventListener("click",onDocClick,true);
+        },0);
+      }
+    }
+    const confirmStyles=document.getElementById("video-confirm-styles");
+    if(confirmStyles)confirmStyles.onclick=()=>{
+      if(!s.videoStyles||s.videoStyles.length<2){
+        s.messages.push({role:"agent",text:"请先下拉多选至少 2 个视频风格，再点击确认风格。"});
+        render();
+        return;
+      }
+      if(s.videoStyles.length!==s.videoStyleCount){
+        s.messages.push({role:"agent",text:`当前需选择 ${s.videoStyleCount} 个风格，已选 ${s.videoStyles.length} 个，请补齐后再确认。`});
+        render();
+        return;
+      }
+      s.videoStyleConfirmed=true;
+      s.videoStyleMultiOpen=false;
+      s.messages.push({role:"agent",text:`已确认 ${s.videoStyles.length} 个视频风格（${s.videoStyles.join("、")}）。Agent 已根据商品特点在后台为每个商品分配 1 个风格，前台无需逐商品查看。`});
+      render();
+    };
     document.querySelectorAll("[data-shot-idx]").forEach(el=>{
       const idx=+el.dataset.shotIdx;
       const key=el.dataset.shotKey;
