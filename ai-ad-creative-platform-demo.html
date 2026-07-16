@@ -579,7 +579,6 @@ function analyzeDemand(text,isVideo){
   const summary=`投放目标：${goal}\n素材类型：${matType}\n投放渠道/媒体：${media}\n承接对象：${isChannel?"频道":"商品"}\n商品范围：${productScope}\n人群意图：${audience}\n核心利益点：${benefit}\n创意方向：${creative}${count?`\n生成规模：提及「${count} 个${matType}」，需确认是总量还是单商品数量`:"\n生成规模：待确认"}\n风险边界：需避免绝对化低价、夸大收益等表达`;
   const questions=[];
   if(count)questions.push(`${questions.length+1}. 「${count} 个${matType}」是任务总量还是每个商品生成数量？`);
-  if(!hasItemId)questions.push(`${questions.length+1}. 是否允许 Agent 自主选品？`);
   if(!isShortVideo&&!isSeed&&!/媒体|渠道|抖音|快手|小红书/.test(t))questions.push(`${questions.length+1}. 请确认具体投放渠道与媒体`);
   if(questions.length===0)questions.push("1. 以上理解是否准确？如有补充请继续说明");
   return{summary,questions:questions.join("\n"),agentReply:"已根据你的描述完成业务层理解。请核对右侧「理解总结」和「待确认问题」，确认无误后可进入智能选品。"};
