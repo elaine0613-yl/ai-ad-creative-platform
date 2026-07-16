@@ -180,6 +180,14 @@
     .shot-list{margin-top:8px}
     .shot-item{border:1px solid var(--gray-100);border-radius:8px;padding:10px;margin-bottom:8px;font-size:11px;background:var(--gray-50)}
     .replicate-zone{border:2px dashed var(--gray-300);border-radius:10px;padding:24px;text-align:center;color:var(--gray-500);font-size:12px;margin-bottom:12px;background:#fff}
+    .sidebar-footer{padding:12px 14px;border-top:1px solid var(--gray-100);background:#fff}
+    .sidebar-footer label{display:block;font-size:10px;color:var(--gray-400);margin-bottom:4px}
+    .sidebar-footer select{width:100%;padding:7px 8px;border:1px solid var(--gray-300);border-radius:6px;font-size:12px;background:#fff}
+    .profile-card{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--gray-200);border-radius:12px;padding:16px;margin-bottom:16px}
+    .profile-avatar{width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;flex-shrink:0}
+    .profile-card .name{font-size:15px;font-weight:600}
+    .profile-card .meta{font-size:12px;color:var(--gray-500);margin-top:4px;line-height:1.5}
+    .pwd-plain{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:var(--gray-700);background:var(--amber-50);padding:2px 6px;border-radius:4px}
     @media(max-width:900px){.create-split{flex-direction:column}.agent-panel{width:100%;max-height:40vh}.sidebar-panel{display:none}.bottom-bar{left:0}}
   </style>
 </head>
@@ -188,6 +196,14 @@
   <aside class="sidebar">
     <div class="sidebar-logo">AI 广告素材生成平台</div>
     <nav class="nav" id="nav"></nav>
+    <div class="sidebar-footer">
+      <label>演示视角切换</label>
+      <select id="role-switch">
+        <option value="admin">管理员</option>
+        <option value="employee">正式员工</option>
+        <option value="agent">代理商</option>
+      </select>
+    </div>
   </aside>
   <main class="main" id="main"></main>
 </div>
@@ -305,7 +321,8 @@ function getDefaultShots(){
 
 const state={
   page:"image-create",
-  role:"employee",
+  role:"admin",
+  account:{search:""},
   image:{mode:"native",stage:"demand",demandAnalyzed:false,demandSummary:null,productSelectMode:"AI 智能选品",categoryValue:"",productIdValue:"",productCount:"5",selectionStrategy:null,selectedProducts:null,productBatch:0,messages:[{role:"agent",text:"你好，我是素材创作 Agent。请用自然语言描述本次图片投放诉求，我会先做业务层理解总结，待你确认后再进入选品与创意方案。"}]},
   video:{mode:"native",stage:"demand",demandAnalyzed:false,demandSummary:null,productSelectMode:"AI 智能选品",categoryValue:"",productIdValue:"",productCount:"5",selectionStrategy:null,selectedProducts:null,productBatch:0,videoStyleCount:1,videoStyles:["商品展示"],videoStyleConfirmed:false,videoStyleMultiOpen:false,shots:null,shotsCollapsed:false,messages:[{role:"agent",text:"你好，我是视频创作 Agent。请描述本次视频投放目标、渠道与商品范围，我会拆解 Hook/玩法/利益点/CTA 结构，并生成分镜脚本供你确认。"}]},
   knowledge:{partition:"image",subLib:"all",search:"",creator:"",created:"",expire:"",form:null},
@@ -593,10 +610,27 @@ function renderSummaryMetrics(sum,label,type){
     </div>`;
 }
 
+const ROLE_PROFILES={
+  admin:{key:"admin",label:"管理员",name:"张三",empId:"E001",org:"增长投放部",avatar:"张"},
+  employee:{key:"employee",label:"正式员工",name:"李四",empId:"E002",org:"增长投放部",avatar:"李"},
+  agent:{key:"agent",label:"代理商",name:"王五",empId:"A001",org:"XX传媒",avatar:"王"},
+};
 const MOCK_ACCOUNTS=[
-  {name:"张三",id:"E001",role:"管理员",org:"增长投放部",log:"2026-06-20 登录"},
-  {name:"李四",id:"E002",role:"正式员工",org:"增长投放部",log:"2026-06-19 导出素材"},
-  {name:"代理商A",id:"A001",role:"代理商",org:"XX传媒",log:"2026-06-18 下载 5 条"},
+  {name:"张三",id:"E001",role:"管理员",org:"增长投放部",log:"2026-06-20 登录",note:"系统超级管理员",account:"admin_zhang",password:"Admin@2026"},
+  {name:"李四",id:"E002",role:"正式员工",org:"增长投放部",log:"2026-06-19 导出素材",note:"负责信息流投放",account:"li_si",password:"LiSi#0619"},
+  {name:"赵六",id:"E003",role:"正式员工",org:"内容运营部",log:"2026-06-18 创建代理商",note:"种草渠道对接",account:"zhao_liu",password:"Zhao666"},
+  {name:"王五",id:"A001",role:"代理商",org:"XX传媒",log:"2026-06-18 下载 5 条",note:"抖音信息流代理",account:"agent_wang",password:"WangWu888",phone:"13800001111",channel:"信息流",media:"抖音"},
+  {name:"钱七",id:"A002",role:"代理商",org:"星火广告",log:"2026-06-17 下载 2 条",note:"小红书种草代理",account:"agent_qian",password:"Qian777",phone:"13900002222",channel:"种草",media:"小红书"},
+];
+const MOCK_EMP_APPLICATIONS=[
+  {id:"APP001",name:"周八",empId:"E010",org:"增长投放部",status:"pending",time:"2026-06-20 09:12",reason:"申请正式员工权限，负责素材投放"},
+  {id:"APP002",name:"吴九",empId:"E011",org:"内容运营部",status:"approved",time:"2026-06-15 14:30",reason:"转正申请"},
+  {id:"APP003",name:"郑十",empId:"E012",org:"增长投放部",status:"rejected",time:"2026-06-12 11:05",reason:"外包人员申请未通过"},
+];
+const MOCK_AGENT_DOWNLOADS=[
+  {channel:"信息流",media:"抖音",company:"XX传媒",name:"王五",phone:"13800001111",detail:"下载 5 条视频素材",time:"2026-06-18 16:30",owner:"E002"},
+  {channel:"种草",media:"小红书",company:"星火广告",name:"钱七",phone:"13900002222",detail:"下载 2 条图片素材",time:"2026-06-17 11:20",owner:"E002"},
+  {channel:"信息流",media:"快手",company:"XX传媒",name:"王五",phone:"13800001111",detail:"下载 3 条图片素材",time:"2026-06-16 09:45",owner:"E003"},
 ];
 
 function esc(s){return s==null?"":String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
@@ -937,10 +971,133 @@ function expireKnowledgeItem(item){
 }
 
 function renderNav(){
-  document.getElementById("nav").innerHTML=NAV.map(n=>`<button class="nav-item${state.page===n.id?" active":""}" data-page="${n.id}">${esc(n.label)}</button>`).join("");
+  const items=NAV.filter(n=>{
+    if(state.role==="agent"&&n.id==="account")return false;
+    if(state.role==="agent"&&!["materials"].includes(n.id))return false;
+    return true;
+  });
+  if(state.role==="agent"&&state.page==="account")state.page="materials";
+  if(state.role==="agent"&&!items.some(n=>n.id===state.page))state.page="materials";
+  document.getElementById("nav").innerHTML=items.map(n=>`<button class="nav-item${state.page===n.id?" active":""}" data-page="${n.id}">${esc(n.label)}</button>`).join("");
   document.querySelectorAll(".nav-item").forEach(b=>b.onclick=()=>{state.page=b.dataset.page;render()});
+  const roleSel=document.getElementById("role-switch");
+  if(roleSel){
+    roleSel.value=state.role;
+    roleSel.onchange=()=>{
+      state.role=roleSel.value;
+      if(state.role==="agent")state.page="materials";
+      else if(state.page!=="account"){/* keep */}
+      render();
+    };
+  }
 }
 
+function getCurrentProfile(){return ROLE_PROFILES[state.role]||ROLE_PROFILES.employee}
+function renderProfileCard(){
+  const p=getCurrentProfile();
+  return`<div class="profile-card">
+      <div class="profile-avatar">${esc(p.avatar)}</div>
+      <div>
+        <div class="name">${esc(p.name)}</div>
+        <div class="meta">工号：${esc(p.empId)} · 角色：${esc(p.label)} · 组织：${esc(p.org)}</div>
+      </div>
+    </div>`;
+}
+function filterAccountsBySearch(list,q){
+  if(!q)return list;
+  const s=q.trim().toLowerCase();
+  return list.filter(a=>[a.name,a.id,a.role,a.org].some(v=>String(v).toLowerCase().includes(s)));
+}
+function openCreateAgentModal(){
+  const body=`<form id="agent-create-form" class="form-grid" style="gap:12px">
+      ${selectField("渠道","信息流",["信息流","DSP","种草","厂商"])}
+      ${selectField("媒体","抖音",["抖音","快手","小红书","腾讯广告","华为"])}
+      ${field("代理商公司名称","XX传媒",false)}
+      ${field("代理商姓名","",false)}
+      ${field("电话","",false)}
+      ${field("账号","",false)}
+      ${field("密码","",false)}
+      <div class="field full"><label>备注</label><textarea rows="2" placeholder="可选备注"></textarea></div>
+      <div class="field full" style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
+        <button type="button" class="btn btn-outline btn-sm" id="agent-create-cancel">取消</button>
+        <button type="button" class="btn btn-primary btn-sm" id="agent-create-save">创建</button>
+      </div>
+    </form>`;
+  openModal("创建代理商账号",body);
+  document.getElementById("agent-create-cancel").onclick=closeModal;
+  document.getElementById("agent-create-save").onclick=()=>{alert("代理商账号已创建（演示）");closeModal()};
+}
+function openEmployeeApplicationsModal(){
+  const statusMap={pending:"待审批",approved:"已通过",rejected:"已驳回"};
+  const body=`<p style="font-size:12px;color:var(--gray-500);margin-bottom:12px">查看正式员工申请记录并审批</p>
+    <table class="data-table"><thead><tr><th>申请 ID</th><th>姓名工号</th><th>组织</th><th>申请说明</th><th>时间</th><th>状态</th><th>操作</th></tr></thead>
+    <tbody>${MOCK_EMP_APPLICATIONS.map(a=>`<tr>
+      <td>${esc(a.id)}</td><td>${esc(a.name)} (${esc(a.empId)})</td><td>${esc(a.org)}</td><td>${esc(a.reason)}</td><td>${esc(a.time)}</td>
+      <td><span class="tag ${a.status==="approved"?"tag-green":a.status==="rejected"?"tag-red":"tag-amber"}">${esc(statusMap[a.status])}</span></td>
+      <td>${a.status==="pending"?`<button type="button" class="btn btn-outline btn-sm" data-app-approve="${esc(a.id)}">通过</button> <button type="button" class="btn btn-ghost btn-sm" data-app-reject="${esc(a.id)}">驳回</button>`:"—"}</td>
+    </tr>`).join("")}</tbody></table>`;
+  openModal("正式员工申请审批",body,true);
+  document.querySelectorAll("[data-app-approve]").forEach(b=>b.onclick=()=>{const a=MOCK_EMP_APPLICATIONS.find(x=>x.id===b.dataset.appApprove);if(a)a.status="approved";openEmployeeApplicationsModal()});
+  document.querySelectorAll("[data-app-reject]").forEach(b=>b.onclick=()=>{const a=MOCK_EMP_APPLICATIONS.find(x=>x.id===b.dataset.appReject);if(a)a.status="rejected";openEmployeeApplicationsModal()});
+}
+function renderAgentDownloadTable(ownerFilter){
+  let rows=MOCK_AGENT_DOWNLOADS;
+  if(ownerFilter)rows=rows.filter(r=>r.owner===ownerFilter);
+  return`<table class="data-table"><thead><tr><th>渠道</th><th>媒体</th><th>公司</th><th>姓名</th><th>电话</th><th>下载详情</th><th>操作时间</th></tr></thead>
+    <tbody>${rows.length?rows.map(r=>`<tr><td>${esc(r.channel)}</td><td>${esc(r.media)}</td><td>${esc(r.company)}</td><td>${esc(r.name)}</td><td>${esc(r.phone)}</td><td>${esc(r.detail)}</td><td>${esc(r.time)}</td></tr>`).join(""):`<tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:20px">暂无下载记录</td></tr>`}</tbody></table>`;
+}
+function renderAccountAdmin(){
+  const q=state.account?.search||"";
+  const list=filterAccountsBySearch(MOCK_ACCOUNTS,q);
+  return`<header class="page-header"><div class="page-header-top"><h1>账号管理</h1><span class="tag tag-purple">管理员视角</span></div></header>
+    <div class="list-area">
+      ${renderProfileCard()}
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+        <input id="acc-search" placeholder="搜索姓名、工号、身份、组织…" value="${esc(q)}" style="flex:1;min-width:200px;padding:8px 12px;border:1px solid var(--gray-300);border-radius:8px"/>
+        <button type="button" class="btn btn-outline btn-sm" id="acc-app-btn">正式员工申请审批</button>
+        <button type="button" class="btn btn-primary btn-sm" id="acc-create-agent">创建代理商账号</button>
+      </div>
+      <h3 style="font-size:13px;font-weight:600;margin-bottom:10px">账号列表</h3>
+      <table class="data-table"><thead><tr><th>姓名工号</th><th>身份</th><th>组织</th><th>日志记录</th><th>备注</th><th>账号 / 密码</th><th>操作</th></tr></thead>
+      <tbody>${list.map(a=>`<tr>
+        <td>${esc(a.name)} (${esc(a.id)})</td><td>${esc(a.role)}</td><td>${esc(a.org)}</td><td>${esc(a.log)}</td><td>${esc(a.note||"—")}</td>
+        <td>${a.role==="代理商"?`<div>${esc(a.account)}</div><span class="pwd-plain">${esc(a.password)}</span>`:`<span style="color:var(--gray-400)">—</span>`}</td>
+        <td><button type="button" class="btn btn-ghost btn-sm" data-acc-view="${esc(a.id)}">查看</button></td>
+      </tr>`).join("")}</tbody></table>
+      <h3 style="font-size:13px;font-weight:600;margin:24px 0 10px">代理商下载记录</h3>
+      ${renderAgentDownloadTable()}
+    </div>`;
+}
+function renderAccountEmployee(){
+  const q=state.account?.search||"";
+  const profile=getCurrentProfile();
+  const list=filterAccountsBySearch(MOCK_ACCOUNTS,q);
+  return`<header class="page-header"><div class="page-header-top"><h1>账号管理</h1><span class="tag tag-blue">正式员工视角</span></div></header>
+    <div class="list-area">
+      ${renderProfileCard()}
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+        <input id="acc-search" placeholder="搜索姓名、工号、身份、组织…" value="${esc(q)}" style="flex:1;min-width:200px;padding:8px 12px;border:1px solid var(--gray-300);border-radius:8px"/>
+        <button type="button" class="btn btn-primary btn-sm" id="acc-create-agent">创建代理商账号</button>
+      </div>
+      <h3 style="font-size:13px;font-weight:600;margin-bottom:10px">账号列表</h3>
+      <table class="data-table"><thead><tr><th>姓名工号</th><th>身份</th><th>组织</th><th>日志记录</th><th>备注</th><th>账号</th><th>密码</th></tr></thead>
+      <tbody>${list.map(a=>`<tr>
+        <td>${esc(a.name)} (${esc(a.id)})</td><td>${esc(a.role)}</td><td>${esc(a.org)}</td><td>${esc(a.log)}</td><td>${esc(a.note||"—")}</td>
+        <td>${esc(a.account||"—")}</td><td><span class="pwd-plain">${esc(a.password||"—")}</span></td>
+      </tr>`).join("")}</tbody></table>
+      <h3 style="font-size:13px;font-weight:600;margin:24px 0 8px">代理商下载记录</h3>
+      <p style="font-size:12px;color:var(--gray-500);margin-bottom:10px">可查看自己名下代理商何时下载了多少素材。</p>
+      ${renderAgentDownloadTable(profile.empId)}
+    </div>`;
+}
+function renderAccount(){
+  if(state.role==="agent"){
+    return`<header class="page-header"><div class="page-header-top"><h1>账号管理</h1></div></header>
+      <div class="list-area"><div class="empty"><h3>代理商无账号管理权限</h3><p style="margin-top:8px;color:var(--gray-500);font-size:12px">代理商仅可进行素材查看与下载等授权操作，请从侧边栏进入素材库。</p></div></div>`;
+  }
+  if(state.role==="admin")return renderAccountAdmin();
+  return renderAccountEmployee();
+}
 function field(label,val,ro){return`<div class="field"><label>${esc(label)}</label><input class="${ro?"readonly":""}" value="${esc(val)}" ${ro?"readonly":""}/></div>`}
 function selectField(label,val,opts){return`<div class="field"><label>${esc(label)}</label><select>${opts.map(o=>`<option${o===val?" selected":""}>${esc(o)}</option>`).join("")}</select></div>`}
 
@@ -1543,19 +1700,6 @@ function renderMaterialData(){
     </div>`;
 }
 
-function renderAccount(){
-  return`<header class="page-header"><div class="page-header-top"><h1>账号管理</h1></div></header>
-    <div class="list-area">
-      <div class="form-section" style="max-width:600px;margin-bottom:20px"><h3>个人信息</h3><p style="font-size:13px">姓名：李四 · 工号：E002 · 角色：正式员工 · 组织：增长投放部</p></div>
-      <div style="display:flex;gap:8px;margin-bottom:14px"><input placeholder="搜索姓名、工号、身份、组织…" style="flex:1;padding:8px 12px;border:1px solid var(--gray-300);border-radius:8px"/><button class="btn btn-outline btn-sm">正式员工申请审批</button><button class="btn btn-primary btn-sm">创建代理商账号</button></div>
-      <table class="data-table"><thead><tr><th>姓名工号</th><th>身份</th><th>组织</th><th>日志记录</th><th>操作</th></tr></thead>
-      <tbody>${MOCK_ACCOUNTS.map(a=>`<tr><td>${esc(a.name)} (${esc(a.id)})</td><td>${esc(a.role)}</td><td>${esc(a.org)}</td><td>${esc(a.log)}</td><td><button class="btn btn-ghost btn-sm">查看</button></td></tr>`).join("")}</tbody></table>
-      <h3 style="font-size:13px;font-weight:600;margin:24px 0 10px">代理商下载记录</h3>
-      <table class="data-table"><thead><tr><th>渠道</th><th>媒体</th><th>公司</th><th>姓名</th><th>下载详情</th><th>操作时间</th></tr></thead>
-      <tbody><tr><td>信息流</td><td>抖音</td><td>XX传媒</td><td>王五</td><td>下载 5 条视频素材</td><td>2026-06-18 16:30</td></tr></tbody></table>
-    </div>`;
-}
-
 function bindPageEvents(){
   if(state.page==="image-create"||state.page==="video-create")bindCreate(state.page.replace("-create",""));
   if(state.page==="knowledge"){
@@ -1622,6 +1766,31 @@ function bindPageEvents(){
         state.data.sortKey=key;
         state.data.sortDir=dir;
         render();
+      };
+    });
+  }
+  if(state.page==="account"){
+    const search=document.getElementById("acc-search");
+    if(search){
+      search.onkeydown=e=>{if(e.key==="Enter"){state.account.search=search.value;render()}};
+      search.onchange=()=>{state.account.search=search.value;render()};
+    }
+    const appBtn=document.getElementById("acc-app-btn");
+    if(appBtn)appBtn.onclick=openEmployeeApplicationsModal;
+    const createBtn=document.getElementById("acc-create-agent");
+    if(createBtn)createBtn.onclick=openCreateAgentModal;
+    document.querySelectorAll("[data-acc-view]").forEach(btn=>{
+      btn.onclick=()=>{
+        const a=MOCK_ACCOUNTS.find(x=>x.id===btn.dataset.accView);
+        if(!a)return;
+        openModal("账号详情",`<div class="form-grid">
+          <div class="field"><label>姓名工号</label><div>${esc(a.name)} (${esc(a.id)})</div></div>
+          <div class="field"><label>身份</label><div>${esc(a.role)}</div></div>
+          <div class="field"><label>组织</label><div>${esc(a.org)}</div></div>
+          <div class="field"><label>日志记录</label><div>${esc(a.log)}</div></div>
+          <div class="field full"><label>备注</label><div>${esc(a.note||"—")}</div></div>
+          ${a.role==="代理商"?`<div class="field"><label>账号</label><div>${esc(a.account)}</div></div><div class="field"><label>密码</label><div><span class="pwd-plain">${esc(a.password)}</span></div></div><div class="field"><label>电话</label><div>${esc(a.phone||"—")}</div></div>`:""}
+        </div>`);
       };
     });
   }
