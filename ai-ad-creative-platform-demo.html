@@ -88,10 +88,21 @@
     .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;align-items:center;justify-content:center;padding:20px}
     .modal-overlay.open{display:flex}
     .modal{background:#fff;border-radius:14px;max-width:860px;width:100%;max-height:88vh;overflow:hidden;display:flex;flex-direction:column}
+    .modal.modal-wide{max-width:1120px}
     .modal-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--gray-100)}
     .modal-header h2{font-size:15px;font-weight:600}
     .modal-close{border:none;background:none;font-size:22px;color:var(--gray-400);cursor:pointer}
     .modal-body{padding:18px;overflow-y:auto;flex:1;font-size:13px}
+    .sheet-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+    .sheet-toolbar .hint{font-size:11px;color:var(--gray-500);flex:1;min-width:200px;line-height:1.45}
+    .sheet-wrap{overflow:auto;border:1px solid var(--gray-200);border-radius:8px;max-height:58vh}
+    table.excel-sheet{width:100%;border-collapse:collapse;font-size:12px;min-width:980px}
+    table.excel-sheet th,table.excel-sheet td{border:1px solid var(--gray-200);padding:0;vertical-align:middle}
+    table.excel-sheet th{background:#eef2ff;color:var(--gray-600);font-weight:600;font-size:11px;padding:8px 10px;position:sticky;top:0;z-index:1;white-space:nowrap}
+    table.excel-sheet td input,table.excel-sheet td select{width:100%;border:none;background:transparent;padding:7px 8px;font-size:12px;min-width:0}
+    table.excel-sheet td input:focus,table.excel-sheet td select:focus{outline:2px solid var(--brand-500);outline-offset:-2px;background:#fff}
+    table.excel-sheet tr:nth-child(even) td{background:#fafafa}
+    table.excel-sheet .row-num{width:36px;text-align:center;color:var(--gray-400);background:var(--gray-50);font-size:11px}
     .metrics-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:20px}
     .metric-card{background:#fff;border:1px solid var(--gray-200);border-radius:10px;padding:14px}
     .metric-card .label{font-size:11px;color:var(--gray-500)}
@@ -517,10 +528,264 @@ function esc(s){return s==null?"":String(s).replace(/&/g,"&amp;").replace(/</g,"
 function filterSelect(label,id,val,opts,cls){return`<div class="filter-field${cls||""}"><label>${esc(label)}</label><select id="${id}">${opts.map(o=>`<option value="${esc(o.v)}"${o.v===val?" selected":""}>${esc(o.v==="all"?"不限":o.l)}</option>`).join("")}</select></div>`}
 function filterInput(label,id,val,placeholder){return`<div class="filter-field"><label>${esc(label)}</label><input id="${id}" placeholder="${esc(placeholder||"")}" value="${esc(val)}"/></div>`}
 function filterDate(label,id,val){return`<div class="filter-field"><label>${esc(label)}</label><input type="date" id="${id}" value="${esc(val)}"/></div>`}
-function openModal(t,h){document.getElementById("modal-title").textContent=t;document.getElementById("modal-body").innerHTML=h;document.getElementById("modal").classList.add("open")}
-function closeModal(){document.getElementById("modal").classList.remove("open")}
+function openModal(t,h,wide){
+  const modal=document.getElementById("modal").querySelector(".modal");
+  if(modal)modal.classList.toggle("modal-wide",!!wide);
+  document.getElementById("modal-title").textContent=t;
+  document.getElementById("modal-body").innerHTML=h;
+  document.getElementById("modal").classList.add("open");
+}
+function closeModal(){
+  document.getElementById("modal").classList.remove("open");
+  const modal=document.getElementById("modal").querySelector(".modal");
+  if(modal)modal.classList.remove("modal-wide");
+}
 document.getElementById("modal-close").onclick=closeModal;
 document.getElementById("modal").onclick=closeModal;
+
+function detailToSheetText(detail){
+  return(detail||[]).map(d=>`${d.k}=${d.v}`).join(" | ");
+}
+function sheetTextToDetail(text,lib){
+  const tpl=cloneDetail(KB_DETAIL_TEMPLATES[lib]||[]);
+  if(!String(text||"").trim())return tpl;
+  const map={};
+  String(text).split("|").forEach(part=>{
+    const i=part.indexOf("=");
+    if(i>0)map[part.slice(0,i).trim()]=part.slice(i+1).trim();
+  });
+  tpl.forEach(f=>{if(map[f.k]!=null){f.v=map[f.k];delete map[f.k]}});
+  Object.keys(map).forEach(k=>tpl.push({k,v:map[k],full:true}));
+  return tpl;
+}
+function getKnowledgeLibOptions(partition){
+  return(partition==="video"?VIDEO_KB:IMAGE_KB);
+}
+function getKnowledgeSheetSource(){
+  const s=state.knowledge;
+  return knowledgeStore.filter(k=>{
+    if(k.partition!==s.partition)return false;
+    if(s.subLib!=="all"&&k.lib!==s.subLib)return false;
+    return true;
+  });
+}
+function buildKnowledgeSheetRows(rows){
+  const body=rows.map((r,i)=>{
+    const libs=getKnowledgeLibOptions(r.partition);
+    const libOptions=libs.map(l=>`<option value="${esc(l.id)}"${l.id===r.lib?" selected":""}>${esc(l.label)}</option>`).join("");
+    return`<tr data-sheet-row="${i}">
+      <td class="row-num">${i+1}</td>
+      <td><select data-col="partition"><option value="image"${r.partition==="image"?" selected":""}>图片</option><option value="video"${r.partition==="video"?" selected":""}>视频</option></select></td>
+      <td><select data-col="lib">${libOptions}</select></td>
+      <td><input data-col="id" value="${esc(r.id)}" placeholder="资产 ID"/></td>
+      <td><input data-col="name" value="${esc(r.name)}" placeholder="资产名称"/></td>
+      <td><input data-col="creator" value="${esc(r.creator)}" placeholder="创建人"/></td>
+      <td><input data-col="created" value="${esc(r.created)}" placeholder="YYYY-MM-DD"/></td>
+      <td><input data-col="expire" value="${esc(r.expire)}" placeholder="失效时间"/></td>
+      <td><input data-col="detail" value="${esc(r.detailText)}" placeholder="字段=值 | 字段=值"/></td>
+      <td style="text-align:center"><button type="button" class="btn btn-ghost btn-sm" data-sheet-del="${i}" style="color:var(--red-600)">删</button></td>
+    </tr>`;
+  }).join("");
+  return`<div class="sheet-wrap"><table class="excel-sheet" id="kb-excel-sheet">
+    <thead><tr>
+      <th class="row-num">#</th><th>分区</th><th>子库</th><th>资产 ID</th><th>资产名称</th><th>创建人</th><th>创建时间</th><th>失效时间</th><th>详情字段（字段=值，用 | 分隔）</th><th>操作</th>
+    </tr></thead>
+    <tbody id="kb-sheet-body">${body}</tbody>
+  </table></div>`;
+}
+function emptySheetRow(partition,lib){
+  return{partition:partition||"image",lib:lib||"channel",id:"",name:"",creator:"",created:"",expire:"2099-12-31 23:59:59",detailText:detailToSheetText(KB_DETAIL_TEMPLATES[lib||"channel"]||[])};
+}
+function openKnowledgeImportExport(){
+  const s=state.knowledge;
+  const source=getKnowledgeSheetSource();
+  const rows=source.map(k=>({
+    partition:k.partition,
+    lib:k.lib,
+    id:k.id,
+    name:k.name,
+    creator:k.creator,
+    created:k.created,
+    expire:k.expire,
+    detailText:detailToSheetText(k.detail),
+  }));
+  while(rows.length<Math.max(source.length+2,3))rows.push(emptySheetRow(s.partition,s.subLib==="all"?"channel":s.subLib));
+  state.knowledge.sheetRows=rows;
+  const scope=s.subLib==="all"?"当前分区全部子库":(getKnowledgeLibOptions(s.partition).find(l=>l.id===s.subLib)?.label||s.subLib);
+  const body=`<div class="sheet-toolbar">
+      <p class="hint">支持批量维护与备份：可在表格中直接编辑，也可从 CSV 文件载入后一键导入。当前范围：${s.partition==="video"?"视频":"图片"}知识库 · ${esc(scope)}</p>
+      <button type="button" class="btn btn-outline btn-sm" id="kb-sheet-add-row">+ 新增行</button>
+      <button type="button" class="btn btn-outline btn-sm" id="kb-sheet-load-file">从文件载入</button>
+      <input type="file" id="kb-sheet-file" accept=".csv,text/csv" hidden/>
+      <button type="button" class="btn btn-outline btn-sm" id="kb-sheet-export">一键导出</button>
+      <button type="button" class="btn btn-primary btn-sm" id="kb-sheet-import">一键导入</button>
+    </div>
+    ${buildKnowledgeSheetRows(rows)}`;
+  openModal("知识库导入 / 导出",body,true);
+  bindKnowledgeSheetEvents();
+}
+function readKnowledgeSheetFromDom(){
+  const rows=[];
+  document.querySelectorAll("#kb-sheet-body tr").forEach(tr=>{
+    const get=col=>{
+      const el=tr.querySelector(`[data-col="${col}"]`);
+      return el?el.value.trim():"";
+    };
+    rows.push({
+      partition:get("partition")||"image",
+      lib:get("lib")||"channel",
+      id:get("id"),
+      name:get("name"),
+      creator:get("creator"),
+      created:get("created"),
+      expire:get("expire")||"2099-12-31 23:59:59",
+      detailText:get("detail"),
+    });
+  });
+  return rows;
+}
+function refreshKnowledgeSheetTable(rows){
+  state.knowledge.sheetRows=rows;
+  const wrap=document.querySelector(".sheet-wrap");
+  if(!wrap)return;
+  wrap.outerHTML=buildKnowledgeSheetRows(rows);
+  bindKnowledgeSheetEvents();
+}
+function bindKnowledgeSheetEvents(){
+  document.querySelectorAll("#kb-sheet-body select[data-col=partition]").forEach(sel=>{
+    sel.onchange=()=>{
+      const tr=sel.closest("tr");
+      const libSel=tr.querySelector('select[data-col="lib"]');
+      const libs=getKnowledgeLibOptions(sel.value);
+      const cur=libSel.value;
+      libSel.innerHTML=libs.map(l=>`<option value="${esc(l.id)}"${l.id===cur?" selected":""}>${esc(l.label)}</option>`).join("");
+      if(!libs.some(l=>l.id===cur))libSel.value=libs[0]?.id||"";
+    };
+  });
+  document.querySelectorAll("[data-sheet-del]").forEach(btn=>{
+    btn.onclick=()=>{
+      const rows=readKnowledgeSheetFromDom();
+      const i=+btn.dataset.sheetDel;
+      rows.splice(i,1);
+      if(!rows.length)rows.push(emptySheetRow(state.knowledge.partition,state.knowledge.subLib==="all"?"channel":state.knowledge.subLib));
+      refreshKnowledgeSheetTable(rows);
+    };
+  });
+  const addRow=document.getElementById("kb-sheet-add-row");
+  if(addRow)addRow.onclick=()=>{
+    const rows=readKnowledgeSheetFromDom();
+    rows.push(emptySheetRow(state.knowledge.partition,state.knowledge.subLib==="all"?"channel":state.knowledge.subLib));
+    refreshKnowledgeSheetTable(rows);
+  };
+  const exportBtn=document.getElementById("kb-sheet-export");
+  if(exportBtn)exportBtn.onclick=exportKnowledgeSheetCsv;
+  const importBtn=document.getElementById("kb-sheet-import");
+  if(importBtn)importBtn.onclick=importKnowledgeSheetToStore;
+  const loadBtn=document.getElementById("kb-sheet-load-file");
+  const fileInput=document.getElementById("kb-sheet-file");
+  if(loadBtn&&fileInput){
+    loadBtn.onclick=()=>fileInput.click();
+    fileInput.onchange=()=>{
+      const file=fileInput.files&&fileInput.files[0];
+      if(!file)return;
+      const reader=new FileReader();
+      reader.onload=()=>{
+        const parsed=parseKnowledgeCsv(String(reader.result||""));
+        if(!parsed.length){alert("未解析到有效数据，请检查 CSV 格式");return}
+        refreshKnowledgeSheetTable(parsed);
+        alert(`已从文件载入 ${parsed.length} 行，确认无误后点击「一键导入」写入知识库`);
+      };
+      reader.readAsText(file,"utf-8");
+      fileInput.value="";
+    };
+  }
+}
+function csvEscape(v){
+  const s=String(v==null?"":v);
+  if(/[",\n\r]/.test(s))return`"${s.replace(/"/g,'""')}"`;
+  return s;
+}
+function exportKnowledgeSheetCsv(){
+  const rows=readKnowledgeSheetFromDom().filter(r=>r.id||r.name);
+  const header=["分区","子库","资产ID","资产名称","创建人","创建时间","失效时间","详情字段"];
+  const lines=[header.join(",")].concat(rows.map(r=>[
+    r.partition,r.lib,r.id,r.name,r.creator,r.created,r.expire,r.detailText
+  ].map(csvEscape).join(",")));
+  const blob=new Blob(["\ufeff"+lines.join("\n")],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=`知识库备份_${state.knowledge.partition}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function parseCsvLine(line){
+  const out=[];let cur="";let q=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(q){
+      if(ch==='"'&&line[i+1]==='"'){cur+='"';i++}
+      else if(ch==='"')q=false;
+      else cur+=ch;
+    }else{
+      if(ch==='"')q=true;
+      else if(ch===","){out.push(cur);cur=""}
+      else cur+=ch;
+    }
+  }
+  out.push(cur);
+  return out;
+}
+function parseKnowledgeCsv(text){
+  const lines=String(text).replace(/^\ufeff/,"").split(/\r?\n/).filter(l=>l.trim());
+  if(lines.length<2)return[];
+  const rows=[];
+  for(let i=1;i<lines.length;i++){
+    const cols=parseCsvLine(lines[i]);
+    if(cols.every(c=>!String(c||"").trim()))continue;
+    const partition=(cols[0]||"").trim()==="video"||cols[0]==="视频"?"video":"image";
+    let lib=(cols[1]||"").trim();
+    const allLibs=[...IMAGE_KB,...VIDEO_KB];
+    const byLabel=allLibs.find(l=>l.label===lib);
+    if(byLabel)lib=byLabel.id;
+    if(!lib)lib="channel";
+    rows.push({
+      partition,
+      lib,
+      id:(cols[2]||"").trim(),
+      name:(cols[3]||"").trim(),
+      creator:(cols[4]||"").trim(),
+      created:(cols[5]||"").trim(),
+      expire:(cols[6]||"").trim()||"2099-12-31 23:59:59",
+      detailText:(cols[7]||"").trim(),
+    });
+  }
+  return rows;
+}
+function importKnowledgeSheetToStore(){
+  const rows=readKnowledgeSheetFromDom().filter(r=>r.id&&r.name);
+  if(!rows.length){alert("请至少填写一行完整的资产 ID 与资产名称");return}
+  const ids=rows.map(r=>r.partition+"|"+r.id);
+  if(new Set(ids).size!==ids.length){alert("表格中存在重复的「分区 + 资产 ID」，请先去重");return}
+  let updated=0,added=0;
+  rows.forEach(r=>{
+    const item={
+      id:r.id,
+      lib:r.lib,
+      partition:r.partition,
+      name:r.name,
+      creator:r.creator||"运营导入",
+      created:r.created||new Date().toISOString().slice(0,10),
+      expire:r.expire||"2099-12-31 23:59:59",
+      detail:sheetTextToDetail(r.detailText,r.lib),
+    };
+    const idx=knowledgeStore.findIndex(k=>k.id===item.id&&k.partition===item.partition);
+    if(idx>=0){knowledgeStore[idx]=item;updated++}
+    else{knowledgeStore.push(item);added++}
+  });
+  closeModal();
+  render();
+  alert(`一键导入完成：新增 ${added} 条，更新 ${updated} 条`);
+}
 
 function renderKnowledgeDetail(k){
   if(k.detail&&k.detail.length)return`<div class="kb-fields">${k.detail.map(f=>`<div class="kb-field${f.full?" full":""}"><span class="kb-k">${esc(f.k)}</span><span class="kb-v">${esc(f.v)}</span></div>`).join("")}</div>`;
@@ -1036,7 +1301,7 @@ function renderKnowledge(){
     if(s.expire&&k.expire!==s.expire)return false;
     return true;
   });
-  return`<header class="page-header"><div class="page-header-top"><h1>知识库</h1><button class="btn btn-primary btn-sm" id="kb-add-btn">+ 新增资产</button></div>
+  return`<header class="page-header"><div class="page-header-top"><h1>知识库</h1><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-outline btn-sm" id="kb-import-btn">导入</button><button class="btn btn-outline btn-sm" id="kb-export-btn">导出</button><button class="btn btn-primary btn-sm" id="kb-add-btn">+ 新增资产</button></div></div>
     <div class="tabs">${["image","video"].map(p=>`<button class="tab${s.partition===p?" active":""}" data-kp="${p}">${p==="image"?"图片生成知识库":"视频生成知识库"}</button>`).join("")}</div></header>
     <div class="filters"><div class="filters-row">
       <div class="filter-field flex-1"><label>搜索</label><div class="search-wrap"><input id="k-search" placeholder="名称、ID、关键词…" value="${esc(s.search)}"/></div></div>
@@ -1164,6 +1429,10 @@ function bindPageEvents(){
       const lib=state.knowledge.subLib==="all"?(state.knowledge.partition==="video"?VIDEO_KB:IMAGE_KB)[0].id:state.knowledge.subLib;
       openKnowledgeForm("add",newKnowledgeDraft(lib,state.knowledge.partition));
     };
+    const importBtn=document.getElementById("kb-import-btn");
+    if(importBtn)importBtn.onclick=()=>openKnowledgeImportExport();
+    const exportBtn=document.getElementById("kb-export-btn");
+    if(exportBtn)exportBtn.onclick=()=>openKnowledgeImportExport();
     document.querySelectorAll("[data-kb-edit]").forEach(btn=>btn.onclick=e=>{
       e.stopPropagation();
       const item=knowledgeStore.find(k=>k.id===btn.dataset.kbEdit&&k.lib===btn.dataset.kbLib&&k.partition===state.knowledge.partition);
