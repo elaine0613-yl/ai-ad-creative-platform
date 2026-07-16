@@ -543,138 +543,126 @@ function closeModal(){
 document.getElementById("modal-close").onclick=closeModal;
 document.getElementById("modal").onclick=closeModal;
 
-function detailToSheetText(detail){
-  return(detail||[]).map(d=>`${d.k}=${d.v}`).join(" | ");
-}
-function sheetTextToDetail(text,lib){
-  const tpl=cloneDetail(KB_DETAIL_TEMPLATES[lib]||[]);
-  if(!String(text||"").trim())return tpl;
-  const map={};
-  String(text).split("|").forEach(part=>{
-    const i=part.indexOf("=");
-    if(i>0)map[part.slice(0,i).trim()]=part.slice(i+1).trim();
-  });
-  tpl.forEach(f=>{if(map[f.k]!=null){f.v=map[f.k];delete map[f.k]}});
-  Object.keys(map).forEach(k=>tpl.push({k,v:map[k],full:true}));
-  return tpl;
-}
 function getKnowledgeLibOptions(partition){
   return(partition==="video"?VIDEO_KB:IMAGE_KB);
 }
-function getKnowledgeSheetSource(){
+function getSheetLibContext(){
   const s=state.knowledge;
-  return knowledgeStore.filter(k=>{
-    if(k.partition!==s.partition)return false;
-    if(s.subLib!=="all"&&k.lib!==s.subLib)return false;
-    return true;
-  });
+  if(s.subLib==="all")return null;
+  const libs=getKnowledgeLibOptions(s.partition);
+  const libMeta=libs.find(l=>l.id===s.subLib);
+  if(!libMeta)return null;
+  const detailFields=cloneDetail(KB_DETAIL_TEMPLATES[s.subLib]||[]);
+  return{
+    partition:s.partition,
+    lib:s.subLib,
+    libLabel:libMeta.label,
+    baseHeaders:["资产名称","资产 ID","创建人","创建时间","失效时间"],
+    detailFields,
+    headers:["资产名称","资产 ID","创建人","创建时间","失效时间",...detailFields.map(f=>f.k)],
+  };
 }
-function buildKnowledgeSheetRows(rows){
-  const body=rows.map((r,i)=>{
-    const libs=getKnowledgeLibOptions(r.partition);
-    const libOptions=libs.map(l=>`<option value="${esc(l.id)}"${l.id===r.lib?" selected":""}>${esc(l.label)}</option>`).join("");
-    return`<tr data-sheet-row="${i}">
+function knowledgeItemToSheetRow(k,ctx){
+  const detailMap={};
+  (k.detail||[]).forEach(d=>{detailMap[d.k]=d.v});
+  const row={id:k.id,name:k.name,creator:k.creator,created:k.created,expire:k.expire,fields:{}};
+  ctx.detailFields.forEach(f=>{row.fields[f.k]=detailMap[f.k]!=null?detailMap[f.k]:""});
+  return row;
+}
+function emptySheetRow(ctx){
+  const row={id:"",name:"",creator:"",created:"",expire:"2099-12-31 23:59:59",fields:{}};
+  ctx.detailFields.forEach(f=>{row.fields[f.k]=""});
+  return row;
+}
+function buildKnowledgeSheetRows(rows,ctx){
+  const head=`<th class="row-num">#</th>${ctx.headers.map(h=>`<th>${esc(h)}</th>`).join("")}<th>操作</th>`;
+  const body=rows.map((r,i)=>`<tr data-sheet-row="${i}">
       <td class="row-num">${i+1}</td>
-      <td><select data-col="partition"><option value="image"${r.partition==="image"?" selected":""}>图片</option><option value="video"${r.partition==="video"?" selected":""}>视频</option></select></td>
-      <td><select data-col="lib">${libOptions}</select></td>
-      <td><input data-col="id" value="${esc(r.id)}" placeholder="资产 ID"/></td>
       <td><input data-col="name" value="${esc(r.name)}" placeholder="资产名称"/></td>
+      <td><input data-col="id" value="${esc(r.id)}" placeholder="资产 ID"/></td>
       <td><input data-col="creator" value="${esc(r.creator)}" placeholder="创建人"/></td>
       <td><input data-col="created" value="${esc(r.created)}" placeholder="YYYY-MM-DD"/></td>
       <td><input data-col="expire" value="${esc(r.expire)}" placeholder="失效时间"/></td>
-      <td><input data-col="detail" value="${esc(r.detailText)}" placeholder="字段=值 | 字段=值"/></td>
+      ${ctx.detailFields.map((f,fi)=>`<td><input data-field-idx="${fi}" value="${esc(r.fields[f.k]||"")}" placeholder="${esc(f.k)}"/></td>`).join("")}
       <td style="text-align:center"><button type="button" class="btn btn-ghost btn-sm" data-sheet-del="${i}" style="color:var(--red-600)">删</button></td>
-    </tr>`;
-  }).join("");
+    </tr>`).join("");
   return`<div class="sheet-wrap"><table class="excel-sheet" id="kb-excel-sheet">
-    <thead><tr>
-      <th class="row-num">#</th><th>分区</th><th>子库</th><th>资产 ID</th><th>资产名称</th><th>创建人</th><th>创建时间</th><th>失效时间</th><th>详情字段（字段=值，用 | 分隔）</th><th>操作</th>
-    </tr></thead>
+    <thead><tr>${head}</tr></thead>
     <tbody id="kb-sheet-body">${body}</tbody>
   </table></div>`;
 }
-function emptySheetRow(partition,lib){
-  return{partition:partition||"image",lib:lib||"channel",id:"",name:"",creator:"",created:"",expire:"2099-12-31 23:59:59",detailText:detailToSheetText(KB_DETAIL_TEMPLATES[lib||"channel"]||[])};
-}
 function openKnowledgeImportExport(){
-  const s=state.knowledge;
-  const source=getKnowledgeSheetSource();
-  const rows=source.map(k=>({
-    partition:k.partition,
-    lib:k.lib,
-    id:k.id,
-    name:k.name,
-    creator:k.creator,
-    created:k.created,
-    expire:k.expire,
-    detailText:detailToSheetText(k.detail),
-  }));
-  while(rows.length<Math.max(source.length+2,3))rows.push(emptySheetRow(s.partition,s.subLib==="all"?"channel":s.subLib));
+  const ctx=getSheetLibContext();
+  if(!ctx){
+    alert("批量导入/导出按子库进行。请先在左侧选择具体子库（不要选「全部资产」）。");
+    return;
+  }
+  state.knowledge.sheetCtx=ctx;
+  const source=knowledgeStore.filter(k=>k.partition===ctx.partition&&k.lib===ctx.lib);
+  const rows=source.map(k=>knowledgeItemToSheetRow(k,ctx));
+  while(rows.length<Math.max(source.length+2,3))rows.push(emptySheetRow(ctx));
   state.knowledge.sheetRows=rows;
-  const scope=s.subLib==="all"?"当前分区全部子库":(getKnowledgeLibOptions(s.partition).find(l=>l.id===s.subLib)?.label||s.subLib);
+  const partLabel=ctx.partition==="video"?"视频":"图片";
   const body=`<div class="sheet-toolbar">
-      <p class="hint">支持批量维护与备份：可在表格中直接编辑，也可从 CSV 文件载入后一键导入。当前范围：${s.partition==="video"?"视频":"图片"}知识库 · ${esc(scope)}</p>
+      <p class="hint">当前子库：${partLabel}知识库 · ${esc(ctx.libLabel)}。表头为本子库全部字段，可直接编辑后一键导入，或导出 CSV 备份。</p>
       <button type="button" class="btn btn-outline btn-sm" id="kb-sheet-add-row">+ 新增行</button>
       <button type="button" class="btn btn-outline btn-sm" id="kb-sheet-load-file">从文件载入</button>
       <input type="file" id="kb-sheet-file" accept=".csv,text/csv" hidden/>
       <button type="button" class="btn btn-outline btn-sm" id="kb-sheet-export">一键导出</button>
       <button type="button" class="btn btn-primary btn-sm" id="kb-sheet-import">一键导入</button>
     </div>
-    ${buildKnowledgeSheetRows(rows)}`;
-  openModal("知识库导入 / 导出",body,true);
+    ${buildKnowledgeSheetRows(rows,ctx)}`;
+  openModal(`导入 / 导出 · ${ctx.libLabel}`,body,true);
   bindKnowledgeSheetEvents();
 }
 function readKnowledgeSheetFromDom(){
+  const ctx=state.knowledge.sheetCtx||getSheetLibContext();
   const rows=[];
   document.querySelectorAll("#kb-sheet-body tr").forEach(tr=>{
     const get=col=>{
       const el=tr.querySelector(`[data-col="${col}"]`);
       return el?el.value.trim():"";
     };
+    const fields={};
+    (ctx?.detailFields||[]).forEach((f,fi)=>{
+      const el=tr.querySelector(`[data-field-idx="${fi}"]`);
+      fields[f.k]=el?el.value.trim():"";
+    });
     rows.push({
-      partition:get("partition")||"image",
-      lib:get("lib")||"channel",
       id:get("id"),
       name:get("name"),
       creator:get("creator"),
       created:get("created"),
       expire:get("expire")||"2099-12-31 23:59:59",
-      detailText:get("detail"),
+      fields,
     });
   });
   return rows;
 }
 function refreshKnowledgeSheetTable(rows){
+  const ctx=state.knowledge.sheetCtx||getSheetLibContext();
+  if(!ctx)return;
   state.knowledge.sheetRows=rows;
   const wrap=document.querySelector(".sheet-wrap");
   if(!wrap)return;
-  wrap.outerHTML=buildKnowledgeSheetRows(rows);
+  wrap.outerHTML=buildKnowledgeSheetRows(rows,ctx);
   bindKnowledgeSheetEvents();
 }
 function bindKnowledgeSheetEvents(){
-  document.querySelectorAll("#kb-sheet-body select[data-col=partition]").forEach(sel=>{
-    sel.onchange=()=>{
-      const tr=sel.closest("tr");
-      const libSel=tr.querySelector('select[data-col="lib"]');
-      const libs=getKnowledgeLibOptions(sel.value);
-      const cur=libSel.value;
-      libSel.innerHTML=libs.map(l=>`<option value="${esc(l.id)}"${l.id===cur?" selected":""}>${esc(l.label)}</option>`).join("");
-      if(!libs.some(l=>l.id===cur))libSel.value=libs[0]?.id||"";
-    };
-  });
+  const ctx=state.knowledge.sheetCtx||getSheetLibContext();
   document.querySelectorAll("[data-sheet-del]").forEach(btn=>{
     btn.onclick=()=>{
       const rows=readKnowledgeSheetFromDom();
       const i=+btn.dataset.sheetDel;
       rows.splice(i,1);
-      if(!rows.length)rows.push(emptySheetRow(state.knowledge.partition,state.knowledge.subLib==="all"?"channel":state.knowledge.subLib));
+      if(!rows.length)rows.push(emptySheetRow(ctx));
       refreshKnowledgeSheetTable(rows);
     };
   });
   const addRow=document.getElementById("kb-sheet-add-row");
   if(addRow)addRow.onclick=()=>{
     const rows=readKnowledgeSheetFromDom();
-    rows.push(emptySheetRow(state.knowledge.partition,state.knowledge.subLib==="all"?"channel":state.knowledge.subLib));
+    rows.push(emptySheetRow(ctx));
     refreshKnowledgeSheetTable(rows);
   };
   const exportBtn=document.getElementById("kb-sheet-export");
@@ -691,7 +679,7 @@ function bindKnowledgeSheetEvents(){
       const reader=new FileReader();
       reader.onload=()=>{
         const parsed=parseKnowledgeCsv(String(reader.result||""));
-        if(!parsed.length){alert("未解析到有效数据，请检查 CSV 格式");return}
+        if(!parsed.length){alert("未解析到有效数据，请检查 CSV 表头是否与当前子库字段一致");return}
         refreshKnowledgeSheetTable(parsed);
         alert(`已从文件载入 ${parsed.length} 行，确认无误后点击「一键导入」写入知识库`);
       };
@@ -706,15 +694,17 @@ function csvEscape(v){
   return s;
 }
 function exportKnowledgeSheetCsv(){
+  const ctx=state.knowledge.sheetCtx||getSheetLibContext();
+  if(!ctx)return;
   const rows=readKnowledgeSheetFromDom().filter(r=>r.id||r.name);
-  const header=["分区","子库","资产ID","资产名称","创建人","创建时间","失效时间","详情字段"];
-  const lines=[header.join(",")].concat(rows.map(r=>[
-    r.partition,r.lib,r.id,r.name,r.creator,r.created,r.expire,r.detailText
-  ].map(csvEscape).join(",")));
+  const lines=[ctx.headers.join(",")].concat(rows.map(r=>{
+    const vals=[r.name,r.id,r.creator,r.created,r.expire,...ctx.detailFields.map(f=>r.fields[f.k]||"")];
+    return vals.map(csvEscape).join(",");
+  }));
   const blob=new Blob(["\ufeff"+lines.join("\n")],{type:"text/csv;charset=utf-8"});
   const a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
-  a.download=`知识库备份_${state.knowledge.partition}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.download=`${ctx.libLabel}_${ctx.partition}_${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
   URL.revokeObjectURL(a.href);
 }
@@ -736,55 +726,59 @@ function parseCsvLine(line){
   return out;
 }
 function parseKnowledgeCsv(text){
+  const ctx=state.knowledge.sheetCtx||getSheetLibContext();
+  if(!ctx)return[];
   const lines=String(text).replace(/^\ufeff/,"").split(/\r?\n/).filter(l=>l.trim());
   if(lines.length<2)return[];
+  const headers=parseCsvLine(lines[0]).map(h=>h.trim());
+  const idx=name=>headers.findIndex(h=>h===name);
+  const iName=idx("资产名称");const iId=idx("资产 ID")>=0?idx("资产 ID"):idx("资产ID");
+  const iCreator=idx("创建人");const iCreated=idx("创建时间");const iExpire=idx("失效时间");
+  const fieldIdx=ctx.detailFields.map(f=>({k:f.k,i:idx(f.k)}));
   const rows=[];
   for(let i=1;i<lines.length;i++){
     const cols=parseCsvLine(lines[i]);
     if(cols.every(c=>!String(c||"").trim()))continue;
-    const partition=(cols[0]||"").trim()==="video"||cols[0]==="视频"?"video":"image";
-    let lib=(cols[1]||"").trim();
-    const allLibs=[...IMAGE_KB,...VIDEO_KB];
-    const byLabel=allLibs.find(l=>l.label===lib);
-    if(byLabel)lib=byLabel.id;
-    if(!lib)lib="channel";
+    const fields={};
+    fieldIdx.forEach(f=>{fields[f.k]=f.i>=0?(cols[f.i]||"").trim():""});
     rows.push({
-      partition,
-      lib,
-      id:(cols[2]||"").trim(),
-      name:(cols[3]||"").trim(),
-      creator:(cols[4]||"").trim(),
-      created:(cols[5]||"").trim(),
-      expire:(cols[6]||"").trim()||"2099-12-31 23:59:59",
-      detailText:(cols[7]||"").trim(),
+      name:iName>=0?(cols[iName]||"").trim():"",
+      id:iId>=0?(cols[iId]||"").trim():"",
+      creator:iCreator>=0?(cols[iCreator]||"").trim():"",
+      created:iCreated>=0?(cols[iCreated]||"").trim():"",
+      expire:iExpire>=0?(cols[iExpire]||"").trim():"2099-12-31 23:59:59",
+      fields,
     });
   }
   return rows;
 }
 function importKnowledgeSheetToStore(){
+  const ctx=state.knowledge.sheetCtx||getSheetLibContext();
+  if(!ctx){alert("请先选择具体子库");return}
   const rows=readKnowledgeSheetFromDom().filter(r=>r.id&&r.name);
-  if(!rows.length){alert("请至少填写一行完整的资产 ID 与资产名称");return}
-  const ids=rows.map(r=>r.partition+"|"+r.id);
-  if(new Set(ids).size!==ids.length){alert("表格中存在重复的「分区 + 资产 ID」，请先去重");return}
+  if(!rows.length){alert("请至少填写一行完整的资产名称与资产 ID");return}
+  const ids=rows.map(r=>r.id);
+  if(new Set(ids).size!==ids.length){alert("表格中存在重复的资产 ID，请先去重");return}
   let updated=0,added=0;
   rows.forEach(r=>{
+    const detail=ctx.detailFields.map(f=>({k:f.k,v:r.fields[f.k]||"",full:!!f.full}));
     const item={
       id:r.id,
-      lib:r.lib,
-      partition:r.partition,
+      lib:ctx.lib,
+      partition:ctx.partition,
       name:r.name,
       creator:r.creator||"运营导入",
       created:r.created||new Date().toISOString().slice(0,10),
       expire:r.expire||"2099-12-31 23:59:59",
-      detail:sheetTextToDetail(r.detailText,r.lib),
+      detail,
     };
-    const idx=knowledgeStore.findIndex(k=>k.id===item.id&&k.partition===item.partition);
+    const idx=knowledgeStore.findIndex(k=>k.id===item.id&&k.partition===item.partition&&k.lib===item.lib);
     if(idx>=0){knowledgeStore[idx]=item;updated++}
     else{knowledgeStore.push(item);added++}
   });
   closeModal();
   render();
-  alert(`一键导入完成：新增 ${added} 条，更新 ${updated} 条`);
+  alert(`一键导入完成（${ctx.libLabel}）：新增 ${added} 条，更新 ${updated} 条`);
 }
 
 function renderKnowledgeDetail(k){
