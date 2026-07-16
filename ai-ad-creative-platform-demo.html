@@ -677,12 +677,11 @@ function renderVideoStyleStrategy(s){
   }
   let extra="";
   if(count===1){
-    extra=`<p class="style-hint">当前仅选择 1 个风格，全部商品将统一使用「${esc(s.videoStyles[0]||VIDEO_STYLES[0])}」，无需 AI 智能分配。</p>`;
+    extra=`<p class="style-hint">当前选择 1 个风格「${esc(s.videoStyles[0]||VIDEO_STYLES[0])}」。Agent 会根据商品特点在后台为每个商品分配风格（单商品最多绑定 1 个）。</p>`;
   }else{
-    extra=`<p class="style-hint">已选择多个风格。单个商品最多绑定 1 个风格；点击「确认风格」后，Agent 将根据商品特点在后台为每个商品分配风格，前台无需逐商品查看。</p>
+    extra=`<p class="style-hint">已选择多个风格。单个商品最多绑定 1 个风格；选择完成后点击「确认风格」，Agent 会根据商品特点在后台为每个商品分配风格。</p>
       <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <button type="button" class="btn btn-outline btn-sm" id="video-confirm-styles">确认风格</button>
-        ${s.videoStyleConfirmed?`<span class="tag tag-blue">已确认，Agent 已完成后台分配</span>`:""}
       </div>`;
   }
   return`<div class="form-section"><h3>视频风格策略</h3>
@@ -996,7 +995,7 @@ function bindCreate(type){
       }
       s.videoStyleConfirmed=true;
       s.videoStyleMultiOpen=false;
-      s.messages.push({role:"agent",text:`已确认 ${s.videoStyles.length} 个视频风格（${s.videoStyles.join("、")}）。Agent 已根据商品特点在后台为每个商品分配 1 个风格，前台无需逐商品查看。`});
+      s.messages.push({role:"agent",text:`已确认 ${s.videoStyles.length} 个视频风格（${s.videoStyles.join("、")}）。Agent 已根据商品特点在后台为每个商品分配 1 个风格。`});
       render();
     };
     document.querySelectorAll("[data-shot-idx]").forEach(el=>{
