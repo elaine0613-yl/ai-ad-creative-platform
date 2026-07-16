@@ -570,13 +570,8 @@ function renderUBreakdownTable(type){
 }
 function openUBreakdownModal(metric,initType){
   const type=initType==="video"?"video":"image";
-  const typeLabel=type==="video"?"视频":"图片";
-  const title=metric==="cpa"
-    ?`${typeLabel} · U 层级 CPA / 消耗明细`
-    :`${typeLabel} · U 层级 消耗 / CPA 明细`;
-  const body=`<p style="font-size:12px;color:var(--gray-500);margin-bottom:12px">当前查看「${typeLabel}」总数据下的 总 / U1 / U2 / U3 明细</p>
-    <div id="u-breakdown-body">${renderUBreakdownTable(type)}</div>`;
-  openModal(title,body);
+  const title=metric==="cpa"?"CPA数据详情":"消耗数据详情";
+  openModal(title,renderUBreakdownTable(type));
 }
 function renderSummaryMetrics(sum,label,type){
   return`<div class="summary-block">
