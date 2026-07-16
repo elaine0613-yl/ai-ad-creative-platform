@@ -114,6 +114,7 @@
     .metric-card{background:#fff;border:1px solid var(--gray-200);border-radius:10px;padding:14px}
     .metric-card .label{font-size:11px;color:var(--gray-500)}
     .metric-card .value{font-size:22px;font-weight:600;margin-top:4px;color:var(--gray-900)}
+    .metric-card .sub{font-size:10px;color:var(--gray-400);margin-top:2px}
     .metric-card.is-clickable{cursor:pointer;transition:border-color .15s,box-shadow .15s}
     .metric-card.is-clickable:hover{border-color:var(--brand-600);box-shadow:0 0 0 3px var(--brand-50)}
     .metric-card .sub-link{color:var(--brand-600);font-size:10px;margin-top:4px}
@@ -121,6 +122,15 @@
     table.data-table th,table.data-table td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--gray-100)}
     table.data-table th{background:var(--gray-50);color:var(--gray-500);font-weight:500;font-size:11px}
     table.data-table tr:hover td{background:var(--gray-50)}
+    table.data-table th.col-head{vertical-align:top;min-width:88px}
+    table.data-table .th-top{display:flex;align-items:center;justify-content:space-between;gap:4px;margin-bottom:6px}
+    table.data-table .sort-btn{border:none;background:none;padding:0;cursor:pointer;font-size:11px;color:var(--gray-500);display:inline-flex;align-items:center;gap:3px;font-weight:500}
+    table.data-table .sort-btn:hover,table.data-table .sort-btn.active{color:var(--brand-700)}
+    table.data-table .sort-btn .arrow{font-size:9px;opacity:.7}
+    table.data-table .col-filter{width:100%;padding:4px 6px;border:1px solid var(--gray-200);border-radius:4px;font-size:11px;background:#fff;color:var(--gray-700)}
+    table.data-table .col-filter:focus{outline:none;border-color:var(--brand-600)}
+    .sheet-row-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0 10px;flex-wrap:wrap}
+    .sheet-row-meta .hint{font-size:11px;color:var(--gray-400)}
     /* 生成页 */
     .create-page{flex:1;display:flex;flex-direction:column;min-height:0}
     .mode-bar{padding:10px 22px;background:#fff;border-bottom:1px solid var(--gray-200);display:flex;gap:6px}
@@ -302,7 +312,7 @@ const state={
   materials:{partition:"image",search:"",status:"all"},
   tasks:{filter:"all"},
   audit:{status:"all",search:""},
-  data:{type:"image",channel:"all",media:"all",date:"7d"},
+  data:{type:"image",channel:"all",media:"all",date:"7d",sortKey:"date",sortDir:"desc",rowFilters:{}},
 };
 
 let knowledgeStore=[
@@ -1454,18 +1464,83 @@ function renderAudit(){
     </article>`).join("")}</div></div>`;
 }
 
-function renderMaterialData(){
+function parseMetricNumber(v){
+  if(v==null)return 0;
+  let s=String(v).trim().replace(/[¥,%\s,]/g,"");
+  if(!s)return 0;
+  const m=s.match(/^(-?\d+(?:\.\d+)?)([KMB万千])?$/i);
+  if(!m)return Number(s)||0;
+  let n=parseFloat(m[1]);
+  const u=(m[2]||"").toUpperCase();
+  if(u==="K"||u==="千")n*=1e3;
+  else if(u==="M")n*=1e6;
+  else if(u==="万")n*=1e4;
+  else if(u==="B")n*=1e9;
+  return n;
+}
+const MATERIAL_DATA_COLS=[
+  {key:"preview",label:"素材预览",filter:"select",sort:true,kind:"text",options:["图片","视频"]},
+  {key:"date",label:"日期",filter:"text",sort:true,kind:"text"},
+  {key:"id",label:"素材 ID",filter:"text",sort:true,kind:"text"},
+  {key:"typeLabel",label:"类型",filter:"select",sort:true,kind:"text",options:["图片","视频"]},
+  {key:"channel",label:"渠道",filter:"select",sort:true,kind:"text",options:["信息流","DSP","种草","厂商"]},
+  {key:"media",label:"媒体",filter:"select",sort:true,kind:"text",options:["抖音","快手","小红书","腾讯广告","华为"]},
+  {key:"cost",label:"消耗",filter:"text",sort:true,kind:"num"},
+  {key:"exposure",label:"曝光",filter:"text",sort:true,kind:"num"},
+  {key:"click",label:"点击",filter:"text",sort:true,kind:"num"},
+  {key:"ctr",label:"点击率",filter:"text",sort:true,kind:"num"},
+  {key:"cpa1",label:"U1 CPA",filter:"text",sort:true,kind:"num"},
+  {key:"run",label:"跑出",filter:"select",sort:true,kind:"text",options:["是","否"]},
+];
+function normalizeDataRow(r){
+  return{...r,typeLabel:r.type==="video"?"视频":"图片",preview:r.type==="video"?"视频":"图片"};
+}
+function getFilteredSortedMaterialRows(){
   const s=state.data;
   const type=s.type==="video"?"video":"image";
-  const rows=MOCK_DATA_ROWS.filter(r=>{
-    if(r.type!==type)return false;
-    if(s.channel!=="all"&&CHANNELS[s.channel]&&r.channel!==CHANNELS[s.channel])return false;
-    if(s.media!=="all"){
-      const mediaLabel=Object.assign({},MEDIAS.feed,MEDIAS.dsp,MEDIAS.seed,MEDIAS.vendor)[s.media];
-      if(mediaLabel&&r.media!==mediaLabel)return false;
-    }
-    return true;
+  const filters=s.rowFilters||{};
+  let rows=MOCK_DATA_ROWS.filter(r=>r.type===type).map(normalizeDataRow);
+  if(s.channel!=="all"&&CHANNELS[s.channel])rows=rows.filter(r=>r.channel===CHANNELS[s.channel]);
+  if(s.media!=="all"){
+    const mediaLabel=Object.assign({},MEDIAS.feed,MEDIAS.dsp,MEDIAS.seed,MEDIAS.vendor)[s.media];
+    if(mediaLabel)rows=rows.filter(r=>r.media===mediaLabel);
+  }
+  MATERIAL_DATA_COLS.forEach(col=>{
+    const q=(filters[col.key]||"").trim();
+    if(!q||q==="all")return;
+    rows=rows.filter(r=>String(r[col.key]??"").toLowerCase().includes(q.toLowerCase()));
   });
+  const key=s.sortKey||"date";
+  const dir=s.sortDir==="asc"?1:-1;
+  const col=MATERIAL_DATA_COLS.find(c=>c.key===key);
+  rows.sort((a,b)=>{
+    const av=a[key],bv=b[key];
+    if(col&&col.kind==="num")return(parseMetricNumber(av)-parseMetricNumber(bv))*dir;
+    return String(av??"").localeCompare(String(bv??""),"zh")*dir;
+  });
+  return rows;
+}
+function renderMaterialColHead(col,s){
+  const active=s.sortKey===col.key;
+  const arrow=active?(s.sortDir==="asc"?"▲":"▼"):"↕";
+  const filterVal=s.rowFilters?.[col.key]||"";
+  let filterEl="";
+  if(col.filter==="select"){
+    const opts=[`<option value="all">全部</option>`].concat((col.options||[]).map(o=>`<option value="${esc(o)}"${filterVal===o?" selected":""}>${esc(o)}</option>`));
+    filterEl=`<select class="col-filter" data-row-filter="${esc(col.key)}">${opts.join("")}</select>`;
+  }else{
+    filterEl=`<input class="col-filter" data-row-filter="${esc(col.key)}" placeholder="回车筛选" value="${esc(filterVal)}"/>`;
+  }
+  const sortBtn=`<button type="button" class="sort-btn${active?" active":""}" data-row-sort="${esc(col.key)}">${esc(col.label)}<span class="arrow">${arrow}</span></button>`;
+  return`<th class="col-head"><div class="th-top">${sortBtn}</div>${filterEl}</th>`;
+}
+function renderMaterialData(){
+  const s=state.data;
+  if(!s.rowFilters)s.rowFilters={};
+  if(!s.sortKey){s.sortKey="date";s.sortDir="desc"}
+  const type=s.type==="video"?"video":"image";
+  const rows=getFilteredSortedMaterialRows();
+  const activeFilterCount=Object.values(s.rowFilters).filter(v=>v&&v!=="all").length;
   return`<header class="page-header"><div class="page-header-top"><h1>素材数据</h1></div>
     <div class="tabs">${["image","video"].map(p=>`<button class="tab${type===p?" active":""}" data-dtype="${p}">${p==="image"?"图片数据":"视频数据"}</button>`).join("")}</div></header>
     <div class="filters"><div class="filters-row">
@@ -1476,13 +1551,21 @@ function renderMaterialData(){
     <div class="list-area">
       <h3 style="font-size:13px;font-weight:600;margin-bottom:12px">总数据</h3>
       ${type==="image"?renderSummaryMetrics(MOCK_DATA_SUMMARY.image,"图片","image"):renderSummaryMetrics(MOCK_DATA_SUMMARY.video,"视频","video")}
-      <h3 style="font-size:13px;font-weight:600;margin:8px 0 10px">单素材数据（${type==="video"?"视频":"图片"}）</h3>
-      <table class="data-table"><thead><tr><th>素材预览</th><th>日期</th><th>素材 ID</th><th>类型</th><th>渠道</th><th>媒体</th><th>消耗</th><th>曝光</th><th>点击</th><th>点击率</th><th>U1 CPA</th><th>跑出</th></tr></thead>
+      <div class="sheet-row-meta">
+        <h3 style="font-size:13px;font-weight:600;margin:0">单素材数据（${type==="video"?"视频":"图片"}）</h3>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="hint">共 ${rows.length} 条${activeFilterCount?` · 已筛选 ${activeFilterCount} 项`:""}${s.sortKey?` · 按「${MATERIAL_DATA_COLS.find(c=>c.key===s.sortKey)?.label||s.sortKey}」${s.sortDir==="asc"?"升序":"降序"}`:""}</span>
+          <button type="button" class="btn btn-ghost btn-sm" id="d-clear-row-filters">清空列筛选</button>
+        </div>
+      </div>
+      <div style="overflow:auto">
+      <table class="data-table" id="material-data-table"><thead><tr>${MATERIAL_DATA_COLS.map(c=>renderMaterialColHead(c,s)).join("")}</tr></thead>
       <tbody>${rows.length?rows.map(r=>`<tr>
         <td>${renderDataThumb(r)}</td>
-        <td>${esc(r.date)}</td><td>${esc(r.id)}</td><td>${r.type==="video"?"视频":"图片"}</td><td>${esc(r.channel)}</td><td>${esc(r.media)}</td>
+        <td>${esc(r.date)}</td><td>${esc(r.id)}</td><td>${esc(r.typeLabel)}</td><td>${esc(r.channel)}</td><td>${esc(r.media)}</td>
         <td>${esc(r.cost)}</td><td>${esc(r.exposure)}</td><td>${esc(r.click)}</td><td>${esc(r.ctr)}</td><td>${esc(r.cpa1)}</td><td>${esc(r.run)}</td>
-      </tr>`).join(""):`<tr><td colspan="12" style="text-align:center;color:var(--gray-400);padding:24px">暂无${type==="video"?"视频":"图片"}单素材数据</td></tr>`}</tbody></table>
+      </tr>`).join(""):`<tr><td colspan="${MATERIAL_DATA_COLS.length}" style="text-align:center;color:var(--gray-400);padding:24px">暂无匹配的单素材数据</td></tr>`}</tbody></table>
+      </div>
     </div>`;
 }
 
@@ -1550,13 +1633,38 @@ function bindPageEvents(){
     });
   }
   if(state.page==="material-data"){
-    document.querySelectorAll("[data-dtype]").forEach(b=>b.onclick=()=>{state.data.type=b.dataset.dtype;render()});
+    document.querySelectorAll("[data-dtype]").forEach(b=>b.onclick=()=>{state.data.type=b.dataset.dtype;state.data.rowFilters={};render()});
     const dc=document.getElementById("d-ch");if(dc)dc.onchange=e=>{state.data.channel=e.target.value;render()};
     const dm=document.getElementById("d-media");if(dm)dm.onchange=e=>{state.data.media=e.target.value;render()};
     const dd=document.getElementById("d-date");if(dd)dd.onchange=e=>{state.data.date=e.target.value;render()};
     document.querySelectorAll("[data-open-u]").forEach(card=>{
       card.onclick=()=>openUBreakdownModal(card.dataset.openU,card.dataset.uInit||state.data.type);
     });
+    document.querySelectorAll("[data-row-sort]").forEach(btn=>{
+      btn.onclick=e=>{
+        e.stopPropagation();
+        const key=btn.dataset.rowSort;
+        if(state.data.sortKey===key)state.data.sortDir=state.data.sortDir==="asc"?"desc":"asc";
+        else{state.data.sortKey=key;state.data.sortDir=key==="date"||key==="cost"||key==="exposure"||key==="click"||key==="ctr"||key==="cpa1"?"desc":"asc"}
+        render();
+      };
+    });
+    document.querySelectorAll("[data-row-filter]").forEach(el=>{
+      const apply=()=>{
+        if(!state.data.rowFilters)state.data.rowFilters={};
+        const v=el.value;
+        if(!v||v==="all")delete state.data.rowFilters[el.dataset.rowFilter];
+        else state.data.rowFilters[el.dataset.rowFilter]=v;
+        render();
+      };
+      if(el.tagName==="SELECT")el.onchange=apply;
+      else{
+        el.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();apply()}};
+        el.onchange=apply;
+      }
+    });
+    const clearBtn=document.getElementById("d-clear-row-filters");
+    if(clearBtn)clearBtn.onclick=()=>{state.data.rowFilters={};render()};
   }
 }
 
