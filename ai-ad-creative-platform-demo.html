@@ -595,16 +595,19 @@ function resetCreateFlow(s,type){
   s.messages=[{role:"agent",text:type==="video"?"你好，我是视频创作 Agent。请描述本次视频投放目标、渠道与商品范围，我会拆解 Hook/玩法/利益点/CTA 结构，并生成分镜脚本供你确认。":"你好，我是素材创作 Agent。请用自然语言描述本次图片投放诉求，我会先做业务层理解总结，待你确认后再进入选品与创意方案。"}];
 }
 
-function renderProductSelectField(s,type){
+function renderProductSelectFields(s,type){
   const mode=s.productSelectMode||"AI 智能选品";
   const opts=["AI 智能选品","按类目智能选品","指定商品 ID"];
-  let extra="";
+  const modeField=`<div class="field"><label>商品选择方式</label><select id="${type}-product-select-mode">${opts.map(o=>`<option${o===mode?" selected":""}>${esc(o)}</option>`).join("")}</select></div>`;
+  let valueField="";
   if(mode==="按类目智能选品"){
-    extra=`<label style="margin-top:8px">类目</label><input id="${type}-category-input" placeholder="请输入类目，多个用逗号分隔" value="${esc(s.categoryValue||"")}"/>`;
+    valueField=`<div class="field"><label>类目</label><input id="${type}-category-input" placeholder="请输入类目，多个用逗号分隔" value="${esc(s.categoryValue||"")}"/></div>`;
   }else if(mode==="指定商品 ID"){
-    extra=`<label style="margin-top:8px">商品 ID</label><input id="${type}-product-id-input" placeholder="请输入商品 ID，多个用逗号分隔" value="${esc(s.productIdValue||"")}"/>`;
+    valueField=`<div class="field"><label>商品 ID</label><input id="${type}-product-id-input" placeholder="请输入商品 ID，多个用逗号分隔" value="${esc(s.productIdValue||"")}"/></div>`;
+  }else{
+    valueField=`<div class="field"></div>`;
   }
-  return`<div class="field"><label>商品选择方式</label><select id="${type}-product-select-mode">${opts.map(o=>`<option${o===mode?" selected":""}>${esc(o)}</option>`).join("")}</select>${extra}</div>`;
+  return{modeField,valueField};
 }
 
 function shotField(label,idx,key,val){
@@ -644,10 +647,12 @@ function renderCreate(type){
       <button class="btn btn-primary btn-sm" data-confirm-stage="${type}">确认需求理解，进入智能选品</button></div>`;
   }
   if(s.stage==="selection"){
+    const productFields=renderProductSelectFields(s,type);
     planHtml+=`<div class="form-section"><h3>素材承接</h3><div class="form-grid">
       ${selectField("承接类型","商品",["商品","频道","活动页"])}
-      ${renderProductSelectField(s,type)}
+      ${productFields.modeField}
       ${field("选品数量","5",false)}
+      ${productFields.valueField}
     </div></div>
     <div class="form-section"><h3>选品策略说明</h3><p style="font-size:12px;color:var(--gray-600);line-height:1.6">Agent 已根据投放目标、媒体渠道、素材类型和承接对象完成智能选品。优先选择近期热度较高、价格优势明显、适合展示真实使用场景的商品；过滤风险较高、描述不完整、图片质量较差的商品。共计 5 个商品。</p>
     <div class="product-cards">${[1,2,3,4,5].map(i=>`<div class="product-card"><div class="title">示例商品 ${i}</div><div>类目：日用百货</div><div class="reason">推荐：近期热度高、价格优势明显的商品</div><button class="btn btn-ghost btn-sm" style="margin-top:4px;padding:0;color:var(--red-600)">删除</button></div>`).join("")}</div>
