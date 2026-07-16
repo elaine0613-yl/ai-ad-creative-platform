@@ -224,8 +224,8 @@ function getDefaultShots(){
 const state={
   page:"image-create",
   role:"employee",
-  image:{mode:"native",stage:"demand",demandAnalyzed:false,demandSummary:null,messages:[{role:"agent",text:"你好，我是素材创作 Agent。请用自然语言描述本次图片投放诉求，我会先做业务层理解总结，待你确认后再进入选品与创意方案。"}]},
-  video:{mode:"native",stage:"demand",demandAnalyzed:false,demandSummary:null,shots:null,shotsCollapsed:false,messages:[{role:"agent",text:"你好，我是视频创作 Agent。请描述本次视频投放目标、渠道与商品范围，我会拆解 Hook/玩法/利益点/CTA 结构，并生成分镜脚本供你确认。"}]},
+  image:{mode:"native",stage:"demand",demandAnalyzed:false,demandSummary:null,productSelectMode:"AI 智能选品",categoryValue:"",productIdValue:"",messages:[{role:"agent",text:"你好，我是素材创作 Agent。请用自然语言描述本次图片投放诉求，我会先做业务层理解总结，待你确认后再进入选品与创意方案。"}]},
+  video:{mode:"native",stage:"demand",demandAnalyzed:false,demandSummary:null,productSelectMode:"AI 智能选品",categoryValue:"",productIdValue:"",shots:null,shotsCollapsed:false,messages:[{role:"agent",text:"你好，我是视频创作 Agent。请描述本次视频投放目标、渠道与商品范围，我会拆解 Hook/玩法/利益点/CTA 结构，并生成分镜脚本供你确认。"}]},
   knowledge:{partition:"image",subLib:"all",search:"",creator:"",created:"",expire:"",form:null},
   materials:{partition:"image",search:"",status:"all"},
   tasks:{filter:"all"},
@@ -588,8 +588,23 @@ function resetCreateFlow(s,type){
   s.stage="demand";
   s.demandAnalyzed=false;
   s.demandSummary=null;
+  s.productSelectMode="AI 智能选品";
+  s.categoryValue="";
+  s.productIdValue="";
   if(type==="video"){s.shots=null;s.shotsCollapsed=false;}
   s.messages=[{role:"agent",text:type==="video"?"你好，我是视频创作 Agent。请描述本次视频投放目标、渠道与商品范围，我会拆解 Hook/玩法/利益点/CTA 结构，并生成分镜脚本供你确认。":"你好，我是素材创作 Agent。请用自然语言描述本次图片投放诉求，我会先做业务层理解总结，待你确认后再进入选品与创意方案。"}];
+}
+
+function renderProductSelectField(s,type){
+  const mode=s.productSelectMode||"AI 智能选品";
+  const opts=["AI 智能选品","按类目智能选品","指定商品 ID"];
+  let extra="";
+  if(mode==="按类目智能选品"){
+    extra=`<label style="margin-top:8px">类目</label><input id="${type}-category-input" placeholder="请输入类目，多个用逗号分隔" value="${esc(s.categoryValue||"")}"/>`;
+  }else if(mode==="指定商品 ID"){
+    extra=`<label style="margin-top:8px">商品 ID</label><input id="${type}-product-id-input" placeholder="请输入商品 ID，多个用逗号分隔" value="${esc(s.productIdValue||"")}"/>`;
+  }
+  return`<div class="field"><label>商品选择方式</label><select id="${type}-product-select-mode">${opts.map(o=>`<option${o===mode?" selected":""}>${esc(o)}</option>`).join("")}</select>${extra}</div>`;
 }
 
 function shotField(label,idx,key,val){
@@ -631,7 +646,7 @@ function renderCreate(type){
   if(s.stage==="selection"){
     planHtml+=`<div class="form-section"><h3>素材承接</h3><div class="form-grid">
       ${selectField("承接类型","商品",["商品","频道","活动页"])}
-      ${selectField("商品选择方式","AI 智能选品",["AI 智能选品","按类目智能选品","指定商品 ID"])}
+      ${renderProductSelectField(s,type)}
       ${field("选品数量","5",false)}
     </div></div>
     <div class="form-section"><h3>选品策略说明</h3><p style="font-size:12px;color:var(--gray-600);line-height:1.6">Agent 已根据投放目标、媒体渠道、素材类型和承接对象完成智能选品。优先选择近期热度较高、价格优势明显、适合展示真实使用场景的商品；过滤风险较高、描述不完整、图片质量较差的商品。共计 5 个商品。</p>
@@ -747,6 +762,12 @@ function bindCreate(type){
   });
   const send=document.getElementById(type+"-send");
   const input=document.getElementById(type+"-input");
+  const productSelectMode=document.getElementById(type+"-product-select-mode");
+  if(productSelectMode)productSelectMode.onchange=()=>{s.productSelectMode=productSelectMode.value;render();};
+  const categoryInput=document.getElementById(type+"-category-input");
+  if(categoryInput)categoryInput.oninput=()=>{s.categoryValue=categoryInput.value;};
+  const productIdInput=document.getElementById(type+"-product-id-input");
+  if(productIdInput)productIdInput.oninput=()=>{s.productIdValue=productIdInput.value;};
   const manageList=document.getElementById(type+"-manage-list");
   if(manageList)manageList.onclick=()=>openModal("管理商品 List",`<p style="font-size:12px;color:var(--gray-500);margin-bottom:10px">查看本次任务全部商品，支持删除、搜索召回、添加商品、导出 Excel</p>
     <table class="data-table"><thead><tr><th>商品 ID</th><th>标题</th><th>类目</th><th>推荐原因</th><th>操作</th></tr></thead>
