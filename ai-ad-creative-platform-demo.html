@@ -570,32 +570,16 @@ function renderUBreakdownTable(type){
 }
 function openUBreakdownModal(metric,initType){
   const type=initType==="video"?"video":"image";
-  state.data.drillType=type;
-  state.data.drillMetric=metric;
-  const title=metric==="cpa"?"U 层级 CPA / 消耗明细":"U 层级 消耗 / CPA 明细";
-  const body=`<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">
-      <div class="tabs" style="border:none;padding:0;gap:6px">
-        <button type="button" class="tab${type==="image"?" active":""}" data-u-type="image" style="border:1px solid var(--gray-200);border-radius:999px;padding:6px 14px">图片</button>
-        <button type="button" class="tab${type==="video"?" active":""}" data-u-type="video" style="border:1px solid var(--gray-200);border-radius:999px;padding:6px 14px">视频</button>
-      </div>
-      <span style="font-size:11px;color:var(--gray-400)">可查看总 / U1 / U2 / U3 的消耗与 CPA</span>
-    </div>
+  const typeLabel=type==="video"?"视频":"图片";
+  const title=metric==="cpa"
+    ?`${typeLabel} · U 层级 CPA / 消耗明细`
+    :`${typeLabel} · U 层级 消耗 / CPA 明细`;
+  const body=`<p style="font-size:12px;color:var(--gray-500);margin-bottom:12px">当前查看「${typeLabel}」总数据下的 总 / U1 / U2 / U3 明细</p>
     <div id="u-breakdown-body">${renderUBreakdownTable(type)}</div>`;
   openModal(title,body);
-  document.querySelectorAll("[data-u-type]").forEach(btn=>{
-    btn.onclick=e=>{
-      e.stopPropagation();
-      const next=btn.dataset.uType;
-      state.data.drillType=next;
-      document.querySelectorAll("[data-u-type]").forEach(b=>b.classList.toggle("active",b.dataset.uType===next));
-      const wrap=document.getElementById("u-breakdown-body");
-      if(wrap)wrap.innerHTML=renderUBreakdownTable(next);
-    };
-  });
 }
 function renderSummaryMetrics(sum,label,type){
   return`<div class="summary-block">
-      <h4><span class="tag ${label==="视频"?"tag-purple":"tag-blue"}">${esc(label)}总数据</span></h4>
       <div class="metrics-grid">
         <div class="metric-card"><div class="label">采用率</div><div class="value">${sum.adoption}</div></div>
         <div class="metric-card"><div class="label">跑出率</div><div class="value">${sum.runRate}</div></div>
@@ -1541,15 +1525,18 @@ function renderMaterialData(){
   const type=s.type==="video"?"video":"image";
   const rows=getFilteredSortedMaterialRows();
   const activeFilterCount=Object.values(s.rowFilters).filter(v=>v&&v!=="all").length;
-  return`<header class="page-header"><div class="page-header-top"><h1>素材数据</h1></div>
-    <div class="tabs">${["image","video"].map(p=>`<button class="tab${type===p?" active":""}" data-dtype="${p}">${p==="image"?"图片数据":"视频数据"}</button>`).join("")}</div></header>
+  return`<header class="page-header"><div class="page-header-top"><h1>素材数据</h1></div></header>
     <div class="filters"><div class="filters-row">
       ${filterSelect("渠道","d-ch",s.channel,Object.entries(CHANNELS).map(([v,l])=>({v,l})))}
       ${filterSelect("媒体","d-media",s.media,[{v:"all",l:""},...Object.entries(MEDIAS.feed).concat(Object.entries(MEDIAS.seed)).map(([v,l])=>({v,l}))])}
       ${filterSelect("日期","d-date",s.date,[{v:"today",l:"今天"},{v:"7d",l:"近 7 天"},{v:"30d",l:"近 30 天"},{v:"custom",l:"自定义"}])}
     </div></div>
     <div class="list-area">
-      <h3 style="font-size:13px;font-weight:600;margin-bottom:12px">总数据</h3>
+      <h3 style="font-size:13px;font-weight:600;margin-bottom:10px">总数据</h3>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button type="button" class="btn ${type==="image"?"btn-primary":"btn-outline"} btn-sm" data-dtype="image">图片</button>
+        <button type="button" class="btn ${type==="video"?"btn-primary":"btn-outline"} btn-sm" data-dtype="video">视频</button>
+      </div>
       ${type==="image"?renderSummaryMetrics(MOCK_DATA_SUMMARY.image,"图片","image"):renderSummaryMetrics(MOCK_DATA_SUMMARY.video,"视频","video")}
       <div class="sheet-row-meta">
         <h3 style="font-size:13px;font-weight:600;margin:0">单素材数据（${type==="video"?"视频":"图片"}）</h3>
