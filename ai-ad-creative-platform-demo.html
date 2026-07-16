@@ -1501,17 +1501,12 @@ function getFilteredSortedMaterialRows(){
 }
 function renderMaterialColHead(col,s){
   const active=s.sortKey===col.key;
-  const arrow=active?(s.sortDir==="asc"?"▲":"▼"):"↕";
-  const filterVal=s.rowFilters?.[col.key]||"";
-  let filterEl="";
-  if(col.filter==="select"){
-    const opts=[`<option value="all">全部</option>`].concat((col.options||[]).map(o=>`<option value="${esc(o)}"${filterVal===o?" selected":""}>${esc(o)}</option>`));
-    filterEl=`<select class="col-filter" data-row-filter="${esc(col.key)}">${opts.join("")}</select>`;
-  }else{
-    filterEl=`<input class="col-filter" data-row-filter="${esc(col.key)}" placeholder="回车筛选" value="${esc(filterVal)}"/>`;
-  }
-  const sortBtn=`<button type="button" class="sort-btn${active?" active":""}" data-row-sort="${esc(col.key)}">${esc(col.label)}<span class="arrow">${arrow}</span></button>`;
-  return`<th class="col-head"><div class="th-top">${sortBtn}</div>${filterEl}</th>`;
+  const sortEl=`<select class="col-filter" data-col-sort="${esc(col.key)}">
+      <option value="" disabled${!active?" selected":""}>排序</option>
+      <option value="asc"${active&&s.sortDir==="asc"?" selected":""}>升序</option>
+      <option value="desc"${active&&s.sortDir==="desc"?" selected":""}>降序</option>
+    </select>`;
+  return`<th class="col-head"><div class="th-top"><span style="font-size:11px;font-weight:500;color:var(--gray-500)">${esc(col.label)}</span></div>${sortEl}</th>`;
 }
 function renderMaterialData(){
   const s=state.data;
@@ -1519,7 +1514,7 @@ function renderMaterialData(){
   if(!s.sortKey){s.sortKey="date";s.sortDir="desc"}
   const type=s.type==="video"?"video":"image";
   const rows=getFilteredSortedMaterialRows();
-  const activeFilterCount=Object.values(s.rowFilters).filter(v=>v&&v!=="all").length;
+  const sortLabel=MATERIAL_DATA_COLS.find(c=>c.key===s.sortKey)?.label||s.sortKey;
   return`<header class="page-header"><div class="page-header-top"><h1>素材数据</h1></div></header>
     <div class="filters"><div class="filters-row">
       ${filterSelect("渠道","d-ch",s.channel,Object.entries(CHANNELS).map(([v,l])=>({v,l})))}
@@ -1535,10 +1530,7 @@ function renderMaterialData(){
       ${type==="image"?renderSummaryMetrics(MOCK_DATA_SUMMARY.image,"图片","image"):renderSummaryMetrics(MOCK_DATA_SUMMARY.video,"视频","video")}
       <div class="sheet-row-meta">
         <h3 style="font-size:13px;font-weight:600;margin:0">单素材数据（${type==="video"?"视频":"图片"}）</h3>
-        <div style="display:flex;gap:8px;align-items:center">
-          <span class="hint">共 ${rows.length} 条${activeFilterCount?` · 已筛选 ${activeFilterCount} 项`:""}${s.sortKey?` · 按「${MATERIAL_DATA_COLS.find(c=>c.key===s.sortKey)?.label||s.sortKey}」${s.sortDir==="asc"?"升序":"降序"}`:""}</span>
-          <button type="button" class="btn btn-ghost btn-sm" id="d-clear-row-filters">清空列筛选</button>
-        </div>
+        <span class="hint">共 ${rows.length} 条 · 按「${esc(sortLabel)}」${s.sortDir==="asc"?"升序":"降序"}</span>
       </div>
       <div style="overflow:auto">
       <table class="data-table" id="material-data-table"><thead><tr>${MATERIAL_DATA_COLS.map(c=>renderMaterialColHead(c,s)).join("")}</tr></thead>
@@ -1622,31 +1614,16 @@ function bindPageEvents(){
     document.querySelectorAll("[data-open-u]").forEach(card=>{
       card.onclick=()=>openUBreakdownModal(card.dataset.openU,card.dataset.uInit||state.data.type);
     });
-    document.querySelectorAll("[data-row-sort]").forEach(btn=>{
-      btn.onclick=e=>{
-        e.stopPropagation();
-        const key=btn.dataset.rowSort;
-        if(state.data.sortKey===key)state.data.sortDir=state.data.sortDir==="asc"?"desc":"asc";
-        else{state.data.sortKey=key;state.data.sortDir=key==="date"||key==="cost"||key==="exposure"||key==="click"||key==="ctr"||key==="cpa1"?"desc":"asc"}
+    document.querySelectorAll("[data-col-sort]").forEach(sel=>{
+      sel.onchange=()=>{
+        const key=sel.dataset.colSort;
+        const dir=sel.value;
+        if(dir!=="asc"&&dir!=="desc")return;
+        state.data.sortKey=key;
+        state.data.sortDir=dir;
         render();
       };
     });
-    document.querySelectorAll("[data-row-filter]").forEach(el=>{
-      const apply=()=>{
-        if(!state.data.rowFilters)state.data.rowFilters={};
-        const v=el.value;
-        if(!v||v==="all")delete state.data.rowFilters[el.dataset.rowFilter];
-        else state.data.rowFilters[el.dataset.rowFilter]=v;
-        render();
-      };
-      if(el.tagName==="SELECT")el.onchange=apply;
-      else{
-        el.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();apply()}};
-        el.onchange=apply;
-      }
-    });
-    const clearBtn=document.getElementById("d-clear-row-filters");
-    if(clearBtn)clearBtn.onclick=()=>{state.data.rowFilters={};render()};
   }
 }
 
